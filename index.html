@@ -34,24 +34,19 @@
     let scanner;
 
     function startScanner() {
-      const previewElement = document.getElementById("preview");
       if (!scanner) {
         scanner = new Html5Qrcode("preview");
       }
-      Html5Qrcode.getCameras().then(devices => {
-        const backCamera = devices.find(device => device.label.toLowerCase().includes("back")) || devices[0];
-        if (backCamera) {
-          scanner.start(backCamera.id, { fps: 10, qrbox: 250 }, qrCodeMessage => {
-            document.getElementById("qrResult").value = qrCodeMessage;
-            scanner.stop();
-          }).catch(err => {
-            alert("Błąd uruchamiania kamery: " + err);
-          });
-        } else {
-          alert("Nie znaleziono kamery.");
-        }
+      const config = {
+        fps: 10,
+        qrbox: 250,
+        facingMode: { exact: "environment" }  // Wymuszenie tylnej kamery
+      };
+      scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
+        document.getElementById("qrResult").value = qrCodeMessage;
+        scanner.stop();
       }).catch(err => {
-        alert("Błąd wykrywania kamer: " + err);
+        alert("Błąd uruchamiania kamery: " + err);
       });
     }
 
@@ -60,10 +55,18 @@
       const id = document.getElementById("idInput").value;
       const qty = document.getElementById("qtyInput").value;
       if (!qr) return alert("Najpierw zeskanuj kod QR.");
+
       if (!navigator.geolocation) {
         alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
         return;
       }
+
+      navigator.permissions && navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+        if (result.state === 'denied') {
+          alert("Dostęp do lokalizacji został zablokowany.");
+        }
+      });
+
       navigator.geolocation.getCurrentPosition(pos => {
         const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
         const time = new Date().toLocaleString();
