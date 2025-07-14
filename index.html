@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Zakrzew QR App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
+    input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
+    table { width: 100%; margin-top: 1rem; border-collapse: collapse; }
+    td, th { border: 1px solid #333; padding: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Zakrzew QR App</h1>
+  <video id="preview" width="300" height="200"></video><br>
+  <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+  <input type="text" id="idInput" placeholder="Wpisz ID"><br>
+  <input type="number" id="qtyInput" placeholder="Ilość"><br>
+  <button onclick="saveEntry()">Zapisz</button>
+  <button onclick="exportCSV()">Eksportuj CSV</button>
+
+  <table id="dataTable">
+    <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    let data = [];
+    let scanner = new Html5Qrcode("preview");
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        scanner.start(devices[0].id, { fps: 10, qrbox: 250 }, qrCodeMessage => {
+          document.getElementById("qrResult").value = qrCodeMessage;
+          scanner.stop();
+        });
+      }
+    });
+
+    function saveEntry() {
+      const qr = document.getElementById("qrResult").value;
+      const id = document.getElementById("idInput").value;
+      const qty = document.getElementById("qtyInput").value;
+      if (!qr) return alert("Najpierw zeskanuj kod QR.");
+      navigator.geolocation.getCurrentPosition(pos => {
+        const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        const time = new Date().toLocaleString();
+        const row = { qr, id, qty, gps, time };
+        data.push(row);
+        const table = document.querySelector("#dataTable tbody");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td>`;
+        table.appendChild(tr);
+      });
+    }
+
+    function exportCSV() {
+      let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
+      data.forEach(row => {
+        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "zakrzew_dane.csv";
+      a.click();
+    }
+  </script>
+</body>
+</html>
