@@ -10,11 +10,13 @@
     input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
     table { width: 100%; margin-top: 1rem; border-collapse: collapse; }
     td, th { border: 1px solid #333; padding: 0.5rem; }
+    #preview { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
   <h1>Simply App</h1>
-  <video id="preview" width="300" height="200"></video><br>
+  <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
+  <button onclick="startScanner()">Skanuj kod QR</button><br>
   <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
   <input type="text" id="idInput" placeholder="Wpisz ID"><br>
   <input type="number" id="qtyInput" placeholder="Ilość"><br>
@@ -29,15 +31,28 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     let data = [];
-    let scanner = new Html5Qrcode("preview");
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices && devices.length) {
-        scanner.start(devices[0].id, { fps: 10, qrbox: 250 }, qrCodeMessage => {
-          document.getElementById("qrResult").value = qrCodeMessage;
-          scanner.stop();
-        });
+    let scanner;
+
+    function startScanner() {
+      const previewElement = document.getElementById("preview");
+      if (!scanner) {
+        scanner = new Html5Qrcode("preview");
       }
-    });
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+          scanner.start(devices[0].id, { fps: 10, qrbox: 250 }, qrCodeMessage => {
+            document.getElementById("qrResult").value = qrCodeMessage;
+            scanner.stop();
+          }).catch(err => {
+            alert("Błąd uruchamiania kamery: " + err);
+          });
+        } else {
+          alert("Nie znaleziono kamery.");
+        }
+      }).catch(err => {
+        alert("Błąd wykrywania kamer: " + err);
+      });
+    }
 
     function saveEntry() {
       const qr = document.getElementById("qrResult").value;
@@ -53,7 +68,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td>`;
         table.appendChild(tr);
-      });
+      }, () => alert("Nie udało się pobrać lokalizacji."));
     }
 
     function exportCSV() {
@@ -64,7 +79,7 @@
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "Simply_dane.csv";
+      a.download = "simply_data.csv";
       a.click();
     }
   </script>
