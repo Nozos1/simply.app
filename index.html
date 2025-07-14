@@ -3,7 +3,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Zakrzew QR App</title>
+  <title>Simply App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>Zakrzew QR App</h1>
+  <h1>Simply App</h1>
   <video id="preview" width="300" height="200"></video><br>
   <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
   <input type="text" id="idInput" placeholder="Wpisz ID"><br>
@@ -64,7 +64,7 @@
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "zakrzew_dane.csv";
+      a.download = "Simply_dane.csv";
       a.click();
     }
   </script>
