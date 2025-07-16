@@ -11,6 +11,7 @@
     table { width: 100%; margin-top: 1rem; border-collapse: collapse; }
     td, th { border: 1px solid #333; padding: 0.5rem; }
     #preview { margin-bottom: 1rem; }
+    #summary { margin-top: 1rem; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -27,6 +28,7 @@
     <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th></tr></thead>
     <tbody></tbody>
   </table>
+  <div id="summary">Suma ilości: 0</div>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
@@ -40,7 +42,7 @@
       const config = {
         fps: 10,
         qrbox: 250,
-        facingMode: { exact: "environment" }  // Wymuszenie tylnej kamery
+        facingMode: { exact: "environment" }
       };
       scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
         document.getElementById("qrResult").value = qrCodeMessage;
@@ -53,7 +55,7 @@
     function saveEntry() {
       const qr = document.getElementById("qrResult").value;
       const id = document.getElementById("idInput").value;
-      const qty = document.getElementById("qtyInput").value;
+      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
       if (!qr) return alert("Najpierw zeskanuj kod QR.");
 
       if (!navigator.geolocation) {
@@ -61,24 +63,26 @@
         return;
       }
 
-      navigator.permissions && navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
-        if (result.state === 'denied') {
-          alert("Dostęp do lokalizacji został zablokowany.");
-        }
-      });
-
       navigator.geolocation.getCurrentPosition(pos => {
         const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
         const time = new Date().toLocaleString();
         const row = { qr, id, qty, gps, time };
         data.push(row);
+
         const table = document.querySelector("#dataTable tbody");
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td>`;
         table.appendChild(tr);
+
+        updateSummary();
       }, err => {
         alert("Nie udało się pobrać lokalizacji: " + err.message);
       }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    function updateSummary() {
+      const sum = data.reduce((total, row) => total + row.qty, 0);
+      document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
     function exportCSV() {
