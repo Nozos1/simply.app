@@ -23,6 +23,7 @@
   <input type="number" id="qtyInput" placeholder="Ilość"><br>
   <button onclick="saveEntry()">Zapisz</button>
   <button onclick="exportCSV()">Eksportuj CSV</button>
+  <button onclick="clearData()">Wyczyść dane</button>
 
   <table id="dataTable">
     <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th></tr></thead>
@@ -32,7 +33,19 @@
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    let data = [];
+    
+let data = JSON.parse(localStorage.getItem("simply_data")) || [];
+
+window.addEventListener("DOMContentLoaded", () => {
+  const table = document.querySelector("#dataTable tbody");
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td>`;
+    table.appendChild(tr);
+  });
+  updateSummary();
+});
+
     let scanner;
 
     function startScanner() {
@@ -67,7 +80,10 @@
         const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
         const time = new Date().toLocaleString();
         const row = { qr, id, qty, gps, time };
-        data.push(row);
+        
+data.push(row);
+localStorage.setItem("simply_data", JSON.stringify(data));
+
 
         const table = document.querySelector("#dataTable tbody");
         const tr = document.createElement("tr");
@@ -85,7 +101,18 @@
       document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
-    function exportCSV() {
+    
+function clearData() {
+  if (confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
+    localStorage.removeItem("simply_data");
+    data = [];
+    document.querySelector("#dataTable tbody").innerHTML = "";
+    updateSummary();
+  }
+}
+
+function exportCSV() {
+
       let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
       data.forEach(row => {
         csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
