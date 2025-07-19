@@ -26,25 +26,24 @@
   <button onclick="clearData()">Wyczyść dane</button>
 
   <table id="dataTable">
-    <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th></tr></thead>
+    <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
     <tbody></tbody>
   </table>
   <h2 id="summary" style="margin-top:2rem;">Suma ilości: 0</h2>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    
-let data = JSON.parse(localStorage.getItem("simply_data")) || [];
+    let data = JSON.parse(localStorage.getItem("simply_data")) || [];
 
-window.addEventListener("DOMContentLoaded", () => {
-  const table = document.querySelector("#dataTable tbody");
-  data.forEach(row => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td>`;
-    table.appendChild(tr);
-  });
-  updateSummary();
-});
+    window.addEventListener("DOMContentLoaded", () => {
+      const table = document.querySelector("#dataTable tbody");
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+        table.appendChild(tr);
+      });
+      updateSummary();
+    });
 
     let scanner;
 
@@ -80,14 +79,12 @@ window.addEventListener("DOMContentLoaded", () => {
         const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
         const time = new Date().toLocaleString();
         const row = { qr, id, qty, gps, time };
-        
-data.push(row);
-localStorage.setItem("simply_data", JSON.stringify(data));
-
+        data.push(row);
+        localStorage.setItem("simply_data", JSON.stringify(data));
 
         const table = document.querySelector("#dataTable tbody");
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td>`;
+        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td><td><button onclick="deleteEntry(${data.length - 1})">🗑️</button></td>`;
         table.appendChild(tr);
 
         updateSummary();
@@ -101,18 +98,7 @@ localStorage.setItem("simply_data", JSON.stringify(data));
       document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
-    
-function clearData() {
-  if (confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
-    localStorage.removeItem("simply_data");
-    data = [];
-    document.querySelector("#dataTable tbody").innerHTML = "";
-    updateSummary();
-  }
-}
-
-function exportCSV() {
-
+    function exportCSV() {
       let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
       data.forEach(row => {
         csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
@@ -122,6 +108,28 @@ function exportCSV() {
       a.href = URL.createObjectURL(blob);
       a.download = "simply_data.csv";
       a.click();
+    }
+
+    function clearData() {
+      if (confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
+        localStorage.removeItem("simply_data");
+        data = [];
+        document.querySelector("#dataTable tbody").innerHTML = "";
+        updateSummary();
+      }
+    }
+
+    function deleteEntry(index) {
+      data.splice(index, 1);
+      localStorage.setItem("simply_data", JSON.stringify(data));
+      const table = document.querySelector("#dataTable tbody");
+      table.innerHTML = "";
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+        table.appendChild(tr);
+      });
+      updateSummary();
     }
   </script>
 </body>
