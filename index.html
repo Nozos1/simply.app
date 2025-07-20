@@ -2,26 +2,23 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Simply App</title>
+  <meta charset="UTF-8" />
+  <title>Simply App v9.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <style>
-    body { background: #111; color: white; font-family: sans-serif; padding: 1em; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
-    th, td { border: 1px solid #555; padding: 6px; text-align: center; }
+    body { background:#111; color:white; font-family:sans-serif; padding:1em; }
     button { padding: 6px 10px; margin: 4px; }
-    .danger { background: darkred; color: white; }
+    table { width:100%; border-collapse:collapse; margin-top:1em; }
+    th, td { border:1px solid #555; padding:6px; text-align:center; }
+    #qr-reader { width: 300px; margin-top: 1em; }
   </style>
 </head>
 <body>
-  <h1>Simply App</h1>
-  <button onclick="startQR()">Skanuj kod QR</button>
-  <br><br>
-  Kod QR: <input id="qrInput" />
+  <h1>Simply App v9.1</h1>
+  <div id="qr-reader"></div>
   <br>
-  Współrzędne: <span id="coords">–</span>
-  <br>
-  ID: <input id="idInput" />
+  ID: <input id="idInput" placeholder="Wpisz ID">
   <br>
   Ilość: <input id="qtyInput" type="number" value="1" />
   <br>
@@ -31,15 +28,20 @@
 
   <h2>Dane</h2>
   <table id="dataTable">
-    <thead>
-      <tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr>
-    </thead>
+    <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
     <tbody></tbody>
   </table>
   <h3>Suma ilości: <span id="sumQty">0</span></h3>
 
   <script>
     let entries = JSON.parse(localStorage.getItem('entries') || "[]");
+    let coords = null;
+
+    navigator.geolocation.getCurrentPosition(pos => {
+      coords = pos.coords;
+    }, err => {
+      alert("Brak zgody na lokalizację.");
+    });
 
     function updateTable() {
       const tbody = document.querySelector("#dataTable tbody");
@@ -72,12 +74,12 @@
     }
 
     function saveEntry() {
-      const qr = document.getElementById("qrInput").value;
+      if (!lastQR || !coords) return alert("Brak QR lub lokalizacji.");
       const id = document.getElementById("idInput").value;
       const qty = document.getElementById("qtyInput").value;
-      if (!qr || !id || !coords) return alert("Uzupełnij dane.");
+      if (!id || !qty) return alert("Uzupełnij ID i ilość.");
       const entry = {
-        qr, id, qty,
+        qr: lastQR, id, qty,
         lat: coords.latitude,
         lon: coords.longitude,
         time: new Date().toLocaleString()
@@ -85,18 +87,6 @@
       entries.push(entry);
       updateTable();
     }
-
-    function startQR() {
-      alert("QR skaner: uruchom ręcznie lub użyj aparatu. (placeholder)");
-    }
-
-    let coords = null;
-    navigator.geolocation.getCurrentPosition(pos => {
-      coords = pos.coords;
-      document.getElementById("coords").innerText = coords.latitude.toFixed(5) + ", " + coords.longitude.toFixed(5);
-    }, err => {
-      alert("Brak zgody na lokalizację.");
-    });
 
     function exportKML() {
       const scanned = new Set(entries.map(e => e.id));
@@ -113,13 +103,20 @@
       });
 
       kml += "\n</Document>\n</kml>";
-
       const blob = new Blob([kml], {type: "application/vnd.google-earth.kml+xml"});
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "mapa_z_pinezkami.kml";
       a.click();
     }
+
+    let lastQR = "";
+    function onScanSuccess(decodedText) {
+      lastQR = decodedText;
+      alert("Zeskanowano: " + decodedText);
+    }
+
+    new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 }).render(onScanSuccess);
 
     updateTable();
   </script>
