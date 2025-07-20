@@ -3,138 +3,54 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Simply App</title>
+  <title>Simply App v9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
-    input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
-    table { width: 100%; margin-top: 1rem; border-collapse: collapse; }
-    td, th { border: 1px solid #333; padding: 0.5rem; }
-    #preview { margin-bottom: 1rem; }
-    #summary { margin-top: 1rem; font-weight: bold; }
-  </style>
 </head>
-<body>
-  <h1>Simply App</h1>
-  <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
-  <button onclick="startScanner()">Skanuj kod QR</button><br>
-  <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
-  <input type="text" id="idInput" placeholder="Wpisz ID"><br>
-  <input type="number" id="qtyInput" placeholder="Ilość"><br>
-  <button onclick="saveEntry()">Zapisz</button>
-  <button onclick="exportCSV()">Eksportuj CSV</button>
-  <button onclick="clearData()">Wyczyść dane</button>
-  <button onclick="downloadKML()">Eksportuj mapę KML</button>
-
-  <table id="dataTable">
-    <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <h2 id="summary" style="margin-top:2rem;">Suma ilości: 0</h2>
-
-  <script src="https://unpkg.com/html5-qrcode"></script>
+<body style="background:#111; color:white; font-family:sans-serif; padding:1em">
+  <h1>Simply App v9</h1>
+  <button onclick="generateKML()">Eksportuj KML</button>
   <script>
-    let data = JSON.parse(localStorage.getItem("simply_data")) || [];
+    function generateKML() {
+      const scanned = [
+        "ID123", "ID789"
+      ];
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const table = document.querySelector("#dataTable tbody");
-      data.forEach((row, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
-        table.appendChild(tr);
+      const placemarks = [
+        { id: "ID123", coords: "20.735,51.971" },
+        { id: "ID456", coords: "20.732,51.970" },
+        { id: "ID789", coords: "20.737,51.972" }
+      ];
+
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <Style id="zielony">
+    <IconStyle>
+      <color>ff00ff00</color>
+      <scale>1.1</scale>
+      <Icon>
+        <href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>`;
+
+      placemarks.forEach(pm => {
+        const style = scanned.includes(pm.id) ? "#zielony" : "#default";
+        kml += `
+  <Placemark>
+    <name>${pm.id}</name>
+    <styleUrl>${style}</styleUrl>
+    <Point><coordinates>${pm.coords}</coordinates></Point>
+  </Placemark>`;
       });
-      updateSummary();
-    });
 
-    let scanner;
+      kml += "\n</Document></kml>";
 
-    function startScanner() {
-      if (!scanner) {
-        scanner = new Html5Qrcode("preview");
-      }
-      const config = {
-        fps: 10,
-        qrbox: 250,
-        facingMode: { exact: "environment" }
-      };
-      scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
-        document.getElementById("qrResult").value = qrCodeMessage;
-        scanner.stop();
-      }).catch(err => {
-        alert("Błąd uruchamiania kamery: " + err);
-      });
-    }
-
-    function saveEntry() {
-      const qr = document.getElementById("qrResult").value;
-      const id = document.getElementById("idInput").value;
-      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
-      if (!qr) return alert("Najpierw zeskanuj kod QR.");
-
-      if (!navigator.geolocation) {
-        alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(pos => {
-        const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-        const time = new Date().toLocaleString();
-        const row = { qr, id, qty, gps, time };
-        data.push(row);
-        localStorage.setItem("simply_data", JSON.stringify(data));
-
-        const table = document.querySelector("#dataTable tbody");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td><td><button onclick="deleteEntry(${data.length - 1})">🗑️</button></td>`;
-        table.appendChild(tr);
-
-        updateSummary();
-      }, err => {
-        alert("Nie udało się pobrać lokalizacji: " + err.message);
-      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-    }
-
-    function updateSummary() {
-      const sum = data.reduce((total, row) => total + row.qty, 0);
-      document.getElementById("summary").textContent = "Suma ilości: " + sum;
-    }
-
-    function exportCSV() {
-      let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
-      data.forEach(row => {
-        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
+      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "simply_data.csv";
+      a.download = "generated_map.kml";
       a.click();
-    }
-
-    function clearData() {
-      if (confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
-        localStorage.removeItem("simply_data");
-        data = [];
-        document.querySelector("#dataTable tbody").innerHTML = "";
-        updateSummary();
-      }
-    }
-
-    function deleteEntry(index) {
-      data.splice(index, 1);
-      localStorage.setItem("simply_data", JSON.stringify(data));
-      const table = document.querySelector("#dataTable tbody");
-      table.innerHTML = "";
-      data.forEach((row, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
-        table.appendChild(tr);
-      });
-      updateSummary();
-    }
-
-    function downloadKML() {
-      alert("Ta wersja nie ma jeszcze generowania KML – w następnej iteracji osadzimy KML po stronie klienta lub backendu.");
     }
   </script>
 </body>
