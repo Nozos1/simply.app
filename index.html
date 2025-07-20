@@ -3,55 +3,125 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Simply App v9</title>
+  <title>Simply App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #111; color: white; font-family: sans-serif; padding: 1em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th, td { border: 1px solid #555; padding: 6px; text-align: center; }
+    button { padding: 6px 10px; margin: 4px; }
+    .danger { background: darkred; color: white; }
+  </style>
 </head>
-<body style="background:#111; color:white; font-family:sans-serif; padding:1em">
-  <h1>Simply App v9</h1>
-  <button onclick="generateKML()">Eksportuj KML</button>
+<body>
+  <h1>Simply App</h1>
+  <button onclick="startQR()">Skanuj kod QR</button>
+  <br><br>
+  Kod QR: <input id="qrInput" />
+  <br>
+  Współrzędne: <span id="coords">–</span>
+  <br>
+  ID: <input id="idInput" />
+  <br>
+  Ilość: <input id="qtyInput" type="number" value="1" />
+  <br>
+  <button onclick="saveEntry()">Zapisz</button>
+  <button onclick="clearData()" class="danger">Wyczyść dane</button>
+  <button onclick="exportKML()">Eksportuj mapę KML</button>
+
+  <h2>Dane</h2>
+  <table id="dataTable">
+    <thead>
+      <tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <h3>Suma ilości: <span id="sumQty">0</span></h3>
+
   <script>
-    function generateKML() {
-      const scanned = [
-        "ID123", "ID789"
-      ];
+    let entries = JSON.parse(localStorage.getItem('entries') || "[]");
 
-      const placemarks = [
-        { id: "ID123", coords: "20.735,51.971" },
-        { id: "ID456", coords: "20.732,51.970" },
-        { id: "ID789", coords: "20.737,51.972" }
-      ];
+    function updateTable() {
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
+      let sum = 0;
+      entries.forEach((e, i) => {
+        sum += parseInt(e.qty);
+        const row = `<tr>
+          <td>${e.qr}</td><td>${e.id}</td><td>${e.qty}</td>
+          <td>${e.lat.toFixed(5)}, ${e.lon.toFixed(5)}</td>
+          <td>${e.time}</td>
+          <td><button onclick="removeEntry(${i})">🗑️</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+      document.getElementById("sumQty").innerText = sum;
+      localStorage.setItem('entries', JSON.stringify(entries));
+    }
 
-      let kml = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-  <Style id="zielony">
-    <IconStyle>
-      <color>ff00ff00</color>
-      <scale>1.1</scale>
-      <Icon>
-        <href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href>
-      </Icon>
-    </IconStyle>
-  </Style>`;
+    function removeEntry(index) {
+      entries.splice(index, 1);
+      updateTable();
+    }
 
-      placemarks.forEach(pm => {
-        const style = scanned.includes(pm.id) ? "#zielony" : "#default";
-        kml += `
-  <Placemark>
-    <name>${pm.id}</name>
-    <styleUrl>${style}</styleUrl>
-    <Point><coordinates>${pm.coords}</coordinates></Point>
-  </Placemark>`;
+    function clearData() {
+      if (confirm("Na pewno usunąć wszystkie dane?")) {
+        entries = [];
+        updateTable();
+      }
+    }
+
+    function saveEntry() {
+      const qr = document.getElementById("qrInput").value;
+      const id = document.getElementById("idInput").value;
+      const qty = document.getElementById("qtyInput").value;
+      if (!qr || !id || !coords) return alert("Uzupełnij dane.");
+      const entry = {
+        qr, id, qty,
+        lat: coords.latitude,
+        lon: coords.longitude,
+        time: new Date().toLocaleString()
+      };
+      entries.push(entry);
+      updateTable();
+    }
+
+    function startQR() {
+      alert("QR skaner: uruchom ręcznie lub użyj aparatu. (placeholder)");
+    }
+
+    let coords = null;
+    navigator.geolocation.getCurrentPosition(pos => {
+      coords = pos.coords;
+      document.getElementById("coords").innerText = coords.latitude.toFixed(5) + ", " + coords.longitude.toFixed(5);
+    }, err => {
+      alert("Brak zgody na lokalizację.");
+    });
+
+    function exportKML() {
+      const scanned = new Set(entries.map(e => e.id));
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>
+<Style id="zielony"><IconStyle><color>ff00ff00</color><scale>1.1</scale>
+<Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>`;
+
+      entries.forEach(e => {
+        kml += `\n<Placemark>
+<name>${e.id}</name>
+<styleUrl>#zielony</styleUrl>
+<Point><coordinates>${e.lon},${e.lat}</coordinates></Point>
+</Placemark>`;
       });
 
-      kml += "\n</Document></kml>";
+      kml += "\n</Document>\n</kml>";
 
-      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+      const blob = new Blob([kml], {type: "application/vnd.google-earth.kml+xml"});
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "generated_map.kml";
+      a.download = "mapa_z_pinezkami.kml";
       a.click();
     }
+
+    updateTable();
   </script>
 </body>
 </html>
