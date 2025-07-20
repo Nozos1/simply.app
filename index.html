@@ -24,6 +24,7 @@
   <button onclick="saveEntry()">Zapisz</button>
   <button onclick="exportCSV()">Eksportuj CSV</button>
   <button onclick="clearData()">Wyczyść dane</button>
+  <button onclick="downloadKML()">Eksportuj mapę KML</button>
 
   <table id="dataTable">
     <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
@@ -130,6 +131,10 @@
         table.appendChild(tr);
       });
       updateSummary();
+    }
+
+    function downloadKML() {
+      alert("Ta wersja nie ma jeszcze generowania KML – w następnej iteracji osadzimy KML po stronie klienta lub backendu.");
     }
   </script>
 </body>
