@@ -2,151 +2,135 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simply App v9.4</title>
+  <meta charset="UTF-8">
+  <title>Simply App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <style>
-    body { background:#111; color:white; font-family:sans-serif; padding:1em; }
-    button { padding: 6px 10px; margin: 4px; }
-    table { width:100%; border-collapse:collapse; margin-top:1em; }
-    th, td { border:1px solid #555; padding:6px; text-align:center; }
-    #qr-reader { width: 100%; max-width: 360px; margin-top: 1em; display: none; }
-    .danger { background: darkred; color: white; }
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
+    input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
+    table { width: 100%; margin-top: 1rem; border-collapse: collapse; }
+    td, th { border: 1px solid #333; padding: 0.5rem; }
+    #preview { margin-bottom: 1rem; }
+    #summary { margin-top: 1rem; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h1>Simply App v9.4</h1>
-  <button onclick="startScanner()">Skanuj kod QR</button>
-  <div id="qr-reader"></div>
-  <br>
-  ID: <input id="idInput" placeholder="Wpisz ID">
-  <br>
-  Ilość: <input id="qtyInput" type="number" value="1" />
-  <br>
+  <h1>Simply App</h1>
+  <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
+  <button onclick="startScanner()">Skanuj kod QR</button><br>
+  <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+  <input type="text" id="idInput" placeholder="Wpisz ID"><br>
+  <input type="number" id="qtyInput" placeholder="Ilość"><br>
   <button onclick="saveEntry()">Zapisz</button>
-  <button onclick="clearData()" class="danger">Wyczyść dane</button>
-  <button onclick="exportKML()">Eksportuj mapę KML</button>
+  <button onclick="exportCSV()">Eksportuj CSV</button>
+  <button onclick="clearData()">Wyczyść dane</button>
 
-  <h2>Dane</h2>
   <table id="dataTable">
     <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
     <tbody></tbody>
   </table>
-  <h3>Suma ilości: <span id="sumQty">0</span></h3>
+  <h2 id="summary" style="margin-top:2rem;">Suma ilości: 0</h2>
 
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    let entries = JSON.parse(localStorage.getItem('entries') || "[]");
-    let coords = null;
-    let lastQR = "";
-    let qrScanner;
+    let data = JSON.parse(localStorage.getItem("simply_data")) || [];
 
-    navigator.geolocation.getCurrentPosition(pos => {
-      coords = pos.coords;
-    }, err => {
-      alert("Brak zgody na lokalizację.");
+    window.addEventListener("DOMContentLoaded", () => {
+      const table = document.querySelector("#dataTable tbody");
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+        table.appendChild(tr);
+      });
+      updateSummary();
     });
 
-    function updateTable() {
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = "";
-      let sum = 0;
-      entries.forEach((e, i) => {
-        sum += parseInt(e.qty);
-        const row = `<tr>
-          <td>${e.qr}</td><td>${e.id}</td><td>${e.qty}</td>
-          <td>${e.lat.toFixed(5)}, ${e.lon.toFixed(5)}</td>
-          <td>${e.time}</td>
-          <td><button onclick="removeEntry(${i})">🗑️</button></td>
-        </tr>`;
-        tbody.innerHTML += row;
-      });
-      document.getElementById("sumQty").innerText = sum;
-      localStorage.setItem('entries', JSON.stringify(entries));
-    }
+    let scanner;
 
-    function removeEntry(index) {
-      entries.splice(index, 1);
-      updateTable();
-    }
-
-    function clearData() {
-      if (confirm("Na pewno usunąć wszystkie dane?")) {
-        entries = [];
-        updateTable();
+    function startScanner() {
+      if (!scanner) {
+        scanner = new Html5Qrcode("preview");
       }
+      const config = {
+        fps: 10,
+        qrbox: 250,
+        facingMode: { exact: "environment" }
+      };
+      scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
+        document.getElementById("qrResult").value = qrCodeMessage;
+        scanner.stop();
+      }).catch(err => {
+        alert("Błąd uruchamiania kamery: " + err);
+      });
     }
 
     function saveEntry() {
-      if (!lastQR || !coords) return alert("Brak QR lub lokalizacji.");
+      const qr = document.getElementById("qrResult").value;
       const id = document.getElementById("idInput").value;
-      const qty = document.getElementById("qtyInput").value;
-      if (!id || !qty) return alert("Uzupełnij ID i ilość.");
-      const entry = {
-        qr: lastQR, id, qty,
-        lat: coords.latitude,
-        lon: coords.longitude,
-        time: new Date().toLocaleString()
-      };
-      entries.push(entry);
-      updateTable();
+      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+      if (!qr) return alert("Najpierw zeskanuj kod QR.");
+
+      if (!navigator.geolocation) {
+        alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(pos => {
+        const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        const time = new Date().toLocaleString();
+        const row = { qr, id, qty, gps, time };
+        data.push(row);
+        localStorage.setItem("simply_data", JSON.stringify(data));
+
+        const table = document.querySelector("#dataTable tbody");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td><td><button onclick="deleteEntry(${data.length - 1})">🗑️</button></td>`;
+        table.appendChild(tr);
+
+        updateSummary();
+      }, err => {
+        alert("Nie udało się pobrać lokalizacji: " + err.message);
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
-    function exportKML() {
-      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>
-<Style id="zielony"><IconStyle><color>ff00ff00</color><scale>1.1</scale>
-<Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>`;
+    function updateSummary() {
+      const sum = data.reduce((total, row) => total + row.qty, 0);
+      document.getElementById("summary").textContent = "Suma ilości: " + sum;
+    }
 
-      entries.forEach(e => {
-        kml += `\n<Placemark>
-<name>${e.id}</name>
-<styleUrl>#zielony</styleUrl>
-<Point><coordinates>${e.lon},${e.lat}</coordinates></Point>
-</Placemark>`;
+    function exportCSV() {
+      let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
+      data.forEach(row => {
+        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
       });
-
-      kml += "\n</Document>\n</kml>";
-      const blob = new Blob([kml], {type: "application/vnd.google-earth.kml+xml"});
+      const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "mapa_z_pinezkami.kml";
+      a.download = "simply_data.csv";
       a.click();
     }
 
-    function startScanner() {
-      const readerDiv = document.getElementById("qr-reader");
-      readerDiv.style.display = "block";
-
-      if (qrScanner) {
-        qrScanner.stop().then(() => {
-          qrScanner.clear().then(initScanner);
-        });
-      } else {
-        initScanner();
-      }
-
-      function initScanner() {
-        qrScanner = new Html5Qrcode("qr-reader");
-        qrScanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: 250 },
-          qrCodeMessage => {
-            lastQR = qrCodeMessage;
-            alert("Zeskanowano: " + qrCodeMessage);
-            qrScanner.stop().then(() => {
-              readerDiv.style.display = "none";
-            });
-          },
-          error => {
-            console.warn("QR błąd:", error);
-          }
-        ).catch(err => {
-          console.error("Nie można uruchomić skanera:", err);
-        });
+    function clearData() {
+      if (confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
+        localStorage.removeItem("simply_data");
+        data = [];
+        document.querySelector("#dataTable tbody").innerHTML = "";
+        updateSummary();
       }
     }
 
-    updateTable();
+    function deleteEntry(index) {
+      data.splice(index, 1);
+      localStorage.setItem("simply_data", JSON.stringify(data));
+      const table = document.querySelector("#dataTable tbody");
+      table.innerHTML = "";
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+        table.appendChild(tr);
+      });
+      updateSummary();
+    }
   </script>
 </body>
 </html>
