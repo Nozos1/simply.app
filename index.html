@@ -3,7 +3,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Simply App v9.1</title>
+  <title>Simply App v9.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <style>
@@ -11,11 +11,12 @@
     button { padding: 6px 10px; margin: 4px; }
     table { width:100%; border-collapse:collapse; margin-top:1em; }
     th, td { border:1px solid #555; padding:6px; text-align:center; }
-    #qr-reader { width: 300px; margin-top: 1em; }
+    #qr-reader { width: 300px; margin-top: 1em; display: none; }
   </style>
 </head>
 <body>
-  <h1>Simply App v9.1</h1>
+  <h1>Simply App v9.2</h1>
+  <button onclick="startScanner()">Uruchom skaner QR</button>
   <div id="qr-reader"></div>
   <br>
   ID: <input id="idInput" placeholder="Wpisz ID">
@@ -36,6 +37,7 @@
   <script>
     let entries = JSON.parse(localStorage.getItem('entries') || "[]");
     let coords = null;
+    let lastQR = "";
 
     navigator.geolocation.getCurrentPosition(pos => {
       coords = pos.coords;
@@ -110,13 +112,23 @@
       a.click();
     }
 
-    let lastQR = "";
-    function onScanSuccess(decodedText) {
-      lastQR = decodedText;
-      alert("Zeskanowano: " + decodedText);
+    function startScanner() {
+      const readerDiv = document.getElementById("qr-reader");
+      readerDiv.style.display = "block";
+      const qrScanner = new Html5Qrcode("qr-reader");
+      qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        qrCodeMessage => {
+          lastQR = qrCodeMessage;
+          alert("Zeskanowano: " + qrCodeMessage);
+          qrScanner.stop().then(() => {
+            readerDiv.style.display = "none";
+          });
+        },
+        errorMessage => {}
+      );
     }
-
-    new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 }).render(onScanSuccess);
 
     updateTable();
   </script>
