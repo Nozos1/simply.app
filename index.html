@@ -3,7 +3,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Simply App v9.3</title>
+  <title>Simply App v9.4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
   <style>
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h1>Simply App v9.3</h1>
+  <h1>Simply App v9.4</h1>
   <button onclick="startScanner()">Skanuj kod QR</button>
   <div id="qr-reader"></div>
   <br>
@@ -39,6 +39,7 @@
     let entries = JSON.parse(localStorage.getItem('entries') || "[]");
     let coords = null;
     let lastQR = "";
+    let qrScanner;
 
     navigator.geolocation.getCurrentPosition(pos => {
       coords = pos.coords;
@@ -92,7 +93,6 @@
     }
 
     function exportKML() {
-      const scanned = new Set(entries.map(e => e.id));
       let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>
 <Style id="zielony"><IconStyle><color>ff00ff00</color><scale>1.1</scale>
 <Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>`;
@@ -117,8 +117,16 @@
       const readerDiv = document.getElementById("qr-reader");
       readerDiv.style.display = "block";
 
-      const qrScanner = new Html5Qrcode("qr-reader");
-      qrScanner.clear().then(() => {
+      if (qrScanner) {
+        qrScanner.stop().then(() => {
+          qrScanner.clear().then(initScanner);
+        });
+      } else {
+        initScanner();
+      }
+
+      function initScanner() {
+        qrScanner = new Html5Qrcode("qr-reader");
         qrScanner.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
@@ -130,12 +138,12 @@
             });
           },
           error => {
-            console.log("QR ERROR: ", error);
+            console.warn("QR błąd:", error);
           }
-        );
-      }).catch(err => {
-        console.error("CLEAR ERROR: ", err);
-      });
+        ).catch(err => {
+          console.error("Nie można uruchomić skanera:", err);
+        });
+      }
     }
 
     updateTable();
