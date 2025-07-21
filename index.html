@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -39,14 +38,14 @@
       const table = document.querySelector("#dataTable tbody");
       data.forEach((row, i) => {
         const tr = document.createElement("tr");
-tr.innerHTML = `
-  <td>${row.qr}</td>
-  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
-  <td>${row.qty}</td>
-  <td>${row.gps}</td>
-  <td>${row.time}</td>
-  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
-`;
+        tr.innerHTML = `
+          <td>${row.qr}</td>
+          <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
+          <td>${row.qty}</td>
+          <td>${row.gps}</td>
+          <td>${row.time}</td>
+          <td><button onclick="deleteEntry(${i})">🗑️</button></td>
+        `;
         table.appendChild(tr);
       });
       updateSummary();
@@ -91,20 +90,25 @@ tr.innerHTML = `
 
         const table = document.querySelector("#dataTable tbody");
         const tr = document.createElement("tr");
-tr.innerHTML = `
-  <td>${row.qr}</td>
-  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
-  <td>${row.qty}</td>
-  <td>${row.gps}</td>
-  <td>${row.time}</td>
-  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
-`;
+        tr.innerHTML = `
+          <td>${qr}</td>
+          <td contenteditable="true" onblur="updateID(${data.length - 1}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${id}</td>
+          <td>${qty}</td>
+          <td>${gps}</td>
+          <td>${time}</td>
+          <td><button onclick="deleteEntry(${data.length - 1})">🗑️</button></td>
+        `;
         table.appendChild(tr);
 
         updateSummary();
       }, err => {
         alert("Nie udało się pobrać lokalizacji: " + err.message);
       }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    function updateID(index, newID) {
+      data[index].id = newID.trim();
+      localStorage.setItem("simply_data", JSON.stringify(data));
     }
 
     function updateSummary() {
@@ -132,10 +136,6 @@ tr.innerHTML = `
         updateSummary();
       }
     }
-function updateID(index, newID) {
-  data[index].id = newID.trim();
-  localStorage.setItem("simply_data", JSON.stringify(data));
-}
 
     function deleteEntry(index) {
       data.splice(index, 1);
@@ -145,14 +145,14 @@ function updateID(index, newID) {
       data.forEach((row, i) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-  <td>${row.qr}</td>
-  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
-  <td>${row.qty}</td>
-  <td>${row.gps}</td>
-  <td>${row.time}</td>
-  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
-`;
-
+          <td>${row.qr}</td>
+          <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
+          <td>${row.qty}</td>
+          <td>${row.gps}</td>
+          <td>${row.time}</td>
+          <td><button onclick="deleteEntry(${i})">🗑️</button></td>
+        `;
+        table.appendChild(tr);
       });
       updateSummary();
     }
