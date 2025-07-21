@@ -118,6 +118,10 @@
         updateSummary();
       }
     }
+function updateID(index, newID) {
+  data[index].id = newID.trim();
+  localStorage.setItem("simply_data", JSON.stringify(data));
+}
 
     function deleteEntry(index) {
       data.splice(index, 1);
@@ -126,8 +130,15 @@
       table.innerHTML = "";
       data.forEach((row, i) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
-        table.appendChild(tr);
+        tr.innerHTML = `
+  <td>${row.qr}</td>
+  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
+  <td>${row.qty}</td>
+  <td>${row.gps}</td>
+  <td>${row.time}</td>
+  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
+`;
+
       });
       updateSummary();
     }
