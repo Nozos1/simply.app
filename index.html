@@ -39,7 +39,14 @@
       const table = document.querySelector("#dataTable tbody");
       data.forEach((row, i) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.qr}</td><td>${row.id}</td><td>${row.qty}</td><td>${row.gps}</td><td>${row.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+tr.innerHTML = `
+  <td>${row.qr}</td>
+  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
+  <td>${row.qty}</td>
+  <td>${row.gps}</td>
+  <td>${row.time}</td>
+  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
+`;
         table.appendChild(tr);
       });
       updateSummary();
@@ -84,7 +91,14 @@
 
         const table = document.querySelector("#dataTable tbody");
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${qr}</td><td>${id}</td><td>${qty}</td><td>${gps}</td><td>${time}</td><td><button onclick="deleteEntry(${data.length - 1})">🗑️</button></td>`;
+tr.innerHTML = `
+  <td>${row.qr}</td>
+  <td contenteditable="true" onblur="updateID(${i}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
+  <td>${row.qty}</td>
+  <td>${row.gps}</td>
+  <td>${row.time}</td>
+  <td><button onclick="deleteEntry(${i})">🗑️</button></td>
+`;
         table.appendChild(tr);
 
         updateSummary();
