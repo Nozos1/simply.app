@@ -54,21 +54,34 @@
     let scanner;
 
     function startScanner() {
-      if (!scanner) {
-        scanner = new Html5Qrcode("preview");
-      }
-      const config = {
-        fps: 10,
-        qrbox: 250,
-        facingMode: { exact: "environment" }
-      };
-      scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
-        document.getElementById("qrResult").value = qrCodeMessage;
-        scanner.stop();
-      }).catch(err => {
-        alert("Błąd uruchamiania kamery: " + err);
+  if (!scanner) {
+    scanner = new Html5Qrcode("preview");
+  }
+
+  Html5Qrcode.getCameras().then(cameras => {
+    if (cameras && cameras.length) {
+      const cameraId = cameras.find(c => c.label.toLowerCase().includes("back"))?.id || cameras[0].id;
+      const config = { fps: 10, qrbox: 250 };
+
+      scanner.start(
+        { deviceId: { exact: cameraId } },
+        config,
+        qrCodeMessage => {
+          document.getElementById("qrResult").value = qrCodeMessage;
+          scanner.stop().then(() => {
+            document.getElementById("preview").innerHTML = "";
+          });
+        }
+      ).catch(err => {
+        alert("Błąd uruchamiania skanera: " + err);
       });
+    } else {
+      alert("Nie wykryto żadnej kamery.");
     }
+  }).catch(err => {
+    alert("Błąd przy pobieraniu kamer: " + err);
+  });
+}
 
     function saveEntry() {
       const qr = document.getElementById("qrResult").value;
