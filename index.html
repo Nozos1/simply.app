@@ -41,9 +41,12 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     // ===== KONFIGURACJA SUPABASE =====
-    const SUPABASE_URL = "TUTAJ_WKLEJ_SWÓJ_URL";
-    const SUPABASE_ANON_KEY = "TUTAJ_WKLEJ_SWÓJ_ANON_KEY";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://alakcrjzfuftugzrrwcr.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
 
     let data = [];
 
