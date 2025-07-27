@@ -2,8 +2,9 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Simply App</title>
+  <title>Simply App Online</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
     input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
@@ -17,7 +18,7 @@
   </style>
 </head>
 <body>
-  <h1>Simply App</h1>
+  <h1>Simply App Online (Supabase)</h1>
   <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
   <button onclick="startScanner()">Skanuj kod QR</button><br>
   <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
@@ -25,7 +26,7 @@
   <input type="number" id="qtyInput" placeholder="Ilość"><br>
   <button onclick="saveEntry()">Zapisz</button>
   <button onclick="exportCSV()">Eksportuj CSV</button>
-  <button onclick="clearData()">Wyczyść dane</button>
+  <button onclick="clearData()">Wyczyść dane lokalne</button>
   <button onclick="endDay()">Zakończ dzień</button>
 
   <h2 id="summary">Suma ilości: 0</h2>
@@ -39,21 +40,186 @@
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    let data = JSON.parse(localStorage.getItem("simply_data")) || [];
+    // ===== KONFIGURACJA SUPABASE =====
+    const SUPABASE_URL = "TUTAJ_WKLEJ_SWÓJ_URL";
+    const SUPABASE_ANON_KEY = "TUTAJ_WKLEJ_SWÓJ_ANON_KEY";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const table = document.querySelector("#dataTable tbody");
-      data.forEach((row, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = rowHTML(row, i);
-        table.appendChild(tr);
-      });
-      updateSummary();
-      renderDayList();
+    let data = [];
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadEntries();
+      await renderDayList();
     });
 
-    let scanner;
+    async function loadEntries() {
+      const { data: entries, error } = await supabaseClient
+        .from('entries')
+        .select('*')
+        .order('id', { ascending: true });
+      if (error) {
+        alert("Błąd pobierania danych: " + error.message);
+        return;
+      }
+      data = entries || [];
+      renderTable();
+      updateSummary();
+    }
 
+    function renderTable() {
+      const table = document.querySelector("#dataTable tbody");
+      table.innerHTML = "";
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.qr}</td>
+          <td>${row.custom_id}</td>
+          <td>${row.qty}</td>
+          <td>${row.gps}</td>
+          <td>${row.time}</td>
+          <td><button onclick="deleteEntry(${row.id})">🗑️</button></td>
+        `;
+        table.appendChild(tr);
+      });
+    }
+
+    function updateSummary() {
+      const sum = data.reduce((total, row) => total + (row.qty || 0), 0);
+      document.getElementById("summary").textContent = "Suma ilości: " + sum;
+    }
+
+    async function saveEntry() {
+      const qr = document.getElementById("qrResult").value;
+      const custom_id = document.getElementById("idInput").value;
+      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+      if (!qr) return alert("Najpierw zeskanuj kod QR.");
+
+      if (!navigator.geolocation) {
+        alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        const time = new Date().toLocaleString();
+        const day = new Date().toISOString().slice(0, 10);
+
+        const { error } = await supabaseClient.from('entries').insert([{ qr, custom_id, qty, gps, time, day }]);
+        if (error) {
+          alert("Błąd zapisu: " + error.message);
+          return;
+        }
+
+        await loadEntries();
+      }, err => {
+        alert("Nie udało się pobrać lokalizacji: " + err.message);
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    async function deleteEntry(id) {
+      const { error } = await supabaseClient.from('entries').delete().eq('id', id);
+      if (error) {
+        alert("Błąd usuwania: " + error.message);
+        return;
+      }
+      await loadEntries();
+    }
+
+    async function endDay() {
+      // Liczymy sumę dnia
+      const today = new Date().toISOString().slice(0, 10);
+      const todayEntries = data.filter(row => row.day === today);
+      const total_qty = todayEntries.reduce((sum, row) => sum + row.qty, 0);
+
+      // Zapisujemy dzień do tabeli days
+      await supabaseClient.from('days').upsert([{ day: today, total_qty }]);
+
+      // Czyścimy wpisy z entries
+      for (let entry of todayEntries) {
+        await supabaseClient.from('entries').delete().eq('id', entry.id);
+      }
+
+      await loadEntries();
+      await renderDayList();
+    }
+
+    async function renderDayList() {
+      const { data: days, error } = await supabaseClient
+        .from('days')
+        .select('*')
+        .order('day', { ascending: true });
+
+      if (error) {
+        alert("Błąd pobierania dni: " + error.message);
+        return;
+      }
+
+      const container = document.getElementById("dayList");
+      container.innerHTML = "<h3>Zapisane dni:</h3>";
+
+      if (!days || days.length === 0) {
+        container.innerHTML += "<p>Brak zapisanych dni.</p>";
+        document.getElementById("totalSum").textContent = "";
+        return;
+      }
+
+      const ul = document.createElement("ul");
+      let totalSum = 0;
+
+      for (let dayRow of days) {
+        totalSum += dayRow.total_qty;
+        const li = document.createElement("li");
+        li.textContent = `${dayRow.day} – suma: ${dayRow.total_qty}`;
+        li.onclick = () => showDay(dayRow.day);
+        ul.appendChild(li);
+      }
+
+      container.appendChild(ul);
+      document.getElementById("totalSum").textContent = "Łączna suma ilości: " + totalSum;
+    }
+
+    async function showDay(day) {
+      const { data: entries, error } = await supabaseClient
+        .from('entries')
+        .select('*')
+        .eq('day', day);
+
+      if (error) {
+        alert("Błąd pobierania wpisów: " + error.message);
+        return;
+      }
+
+      let tableHTML = `
+        <h3>Dane z dnia ${day}</h3>
+        <table style="width:100%; border-collapse: collapse;">
+          <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th></tr></thead>
+          <tbody>
+      `;
+
+      entries.forEach(row => {
+        tableHTML += `
+          <tr>
+            <td>${row.qr}</td>
+            <td>${row.custom_id}</td>
+            <td>${row.qty}</td>
+            <td>${row.gps}</td>
+            <td>${row.time}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += "</tbody></table>";
+      document.getElementById("dayList").innerHTML = tableHTML + '<button onclick="renderDayList()">⬅️ Wróć do listy dni</button>';
+    }
+
+    function clearData() {
+      data = [];
+      renderTable();
+      updateSummary();
+    }
+
+    // Skaner QR – jak w v8
+    let scanner;
     function startScanner() {
       if (!scanner) {
         scanner = new Html5Qrcode("preview");
@@ -61,11 +227,7 @@
         scanner.clear().catch(() => {});
       }
 
-      const config = {
-        fps: 10,
-        qrbox: 250,
-        facingMode: { exact: "environment" }
-      };
+      const config = { fps: 10, qrbox: 250, facingMode: { exact: "environment" } };
 
       scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
         document.getElementById("qrResult").value = qrCodeMessage;
@@ -76,177 +238,6 @@
         alert("Błąd uruchamiania kamery: " + err);
       });
     }
-
-    function saveEntry() {
-      const qr = document.getElementById("qrResult").value;
-      const id = document.getElementById("idInput").value;
-      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
-      if (!qr) return alert("Najpierw zeskanuj kod QR.");
-
-      if (!navigator.geolocation) {
-        alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(pos => {
-        const gps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-        const time = new Date().toLocaleString();
-        const row = { qr, id, qty, gps, time };
-        data.push(row);
-        localStorage.setItem("simply_data", JSON.stringify(data));
-
-        const table = document.querySelector("#dataTable tbody");
-        const tr = document.createElement("tr");
-        tr.innerHTML = rowHTML(row, data.length - 1);
-        table.appendChild(tr);
-
-        updateSummary();
-      }, err => {
-        alert("Nie udało się pobrać lokalizacji: " + err.message);
-      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-    }
-
-    function rowHTML(row, index) {
-      return `
-        <td>${row.qr}</td>
-        <td contenteditable="true" onblur="updateID(${index}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${row.id}</td>
-        <td>${row.qty}</td>
-        <td>${row.gps}</td>
-        <td>${row.time}</td>
-        <td><button onclick="deleteEntry(${index})">🗑️</button></td>
-      `;
-    }
-
-    function updateID(index, newID) {
-      data[index].id = newID.trim();
-      localStorage.setItem("simply_data", JSON.stringify(data));
-    }
-
-    function updateSummary() {
-      const sum = data.reduce((total, row) => total + row.qty, 0);
-      document.getElementById("summary").textContent = "Suma ilości: " + sum;
-    }
-
-    function exportCSV() {
-      let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
-      data.forEach(row => {
-        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "simply_data.csv";
-      a.click();
-    }
-
-    function clearData() {
-      localStorage.removeItem("simply_data");
-      data = [];
-      document.querySelector("#dataTable tbody").innerHTML = "";
-      updateSummary();
-    }
-
-    function deleteEntry(index) {
-      data.splice(index, 1);
-      localStorage.setItem("simply_data", JSON.stringify(data));
-      const table = document.querySelector("#dataTable tbody");
-      table.innerHTML = "";
-      data.forEach((row, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = rowHTML(row, i);
-        table.appendChild(tr);
-      });
-      updateSummary();
-    }
-
-    function endDay() {
-      if (data.length === 0) {
-        alert("Brak danych do zapisania.");
-        return;
-      }
-
-      const today = new Date().toISOString().slice(0, 10);
-      let archive = JSON.parse(localStorage.getItem("simply_archive")) || {};
-      archive[today] = data;
-      localStorage.setItem("simply_archive", JSON.stringify(archive));
-      clearData();
-      renderDayList();
-    }
-
-    function renderDayList() {
-      const archive = JSON.parse(localStorage.getItem("simply_archive")) || {};
-      const container = document.getElementById("dayList");
-      container.innerHTML = "<h3>Zapisane dni:</h3>";
-
-      if (Object.keys(archive).length === 0) {
-        container.innerHTML += "<p>Brak zapisanych dni.</p>";
-        return;
-      }
-
-      const ul = document.createElement("ul");
-      let totalSum = 0;
-
-      for (let date in archive) {
-        const dayEntries = archive[date];
-        const daySum = dayEntries.reduce((sum, row) => sum + row.qty, 0);
-        totalSum += daySum;
-
-        const li = document.createElement("li");
-        li.textContent = `${date} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
-        li.onclick = () => showDay(date);
-        ul.appendChild(li);
-      }
-
-      container.appendChild(ul);
-
-      // Wyświetl łączną sumę
-      document.getElementById("totalSum").textContent = "Łączna suma ilości: " + totalSum;
-    }
-
-    function showDay(date) {
-  const archive = JSON.parse(localStorage.getItem("simply_archive")) || {};
-  let rows = archive[date];
-  if (!rows) return;
-
-  let tableHTML = `
-    <h3>Dane z dnia ${date}</h3>
-    <table style="width:100%; border-collapse: collapse;">
-      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
-      <tbody>
-  `;
-
-  rows.forEach((row, i) => {
-    tableHTML += `
-      <tr>
-        <td>${row.qr}</td>
-        <td>${row.id}</td>
-        <td>${row.qty}</td>
-        <td>${row.gps}</td>
-        <td>${row.time}</td>
-        <td><button onclick="deleteFromDay('${date}', ${i})">🗑️</button></td>
-      </tr>
-    `;
-  });
-
-  tableHTML += "</tbody></table>";
-  document.getElementById("dayList").innerHTML = tableHTML + '<button onclick="renderDayList()">⬅️ Wróć do listy dni</button>';
-}
-
-function deleteFromDay(date, index) {
-  let archive = JSON.parse(localStorage.getItem("simply_archive")) || {};
-  if (!archive[date]) return;
-
-  archive[date].splice(index, 1);
-
-  if (archive[date].length === 0) {
-    delete archive[date];
-    renderDayList();
-  } else {
-    showDay(date);
-  }
-
-  localStorage.setItem("simply_archive", JSON.stringify(archive));
-}
   </script>
 </body>
 </html>
