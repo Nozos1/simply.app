@@ -54,34 +54,27 @@
     let scanner;
 
     function startScanner() {
-  if (!scanner) {
-    scanner = new Html5Qrcode("preview");
-  }
+      if (!scanner) {
+        scanner = new Html5Qrcode("preview");
+      } else {
+        scanner.clear().catch(() => {});
+      }
 
-  Html5Qrcode.getCameras().then(cameras => {
-    if (cameras && cameras.length) {
-      const cameraId = cameras.find(c => c.label.toLowerCase().includes("back"))?.id || cameras[0].id;
-      const config = { fps: 10, qrbox: 250 };
+      const config = {
+        fps: 10,
+        qrbox: 250,
+        facingMode: { exact: "environment" }
+      };
 
-      scanner.start(
-        { deviceId: { exact: cameraId } },
-        config,
-        qrCodeMessage => {
-          document.getElementById("qrResult").value = qrCodeMessage;
-          scanner.stop().then(() => {
-            document.getElementById("preview").innerHTML = "";
-          });
-        }
-      ).catch(err => {
-        alert("Błąd uruchamiania skanera: " + err);
+      scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
+        document.getElementById("qrResult").value = qrCodeMessage;
+        scanner.stop().then(() => {
+          document.getElementById("preview").innerHTML = "";
+        });
+      }).catch(err => {
+        alert("Błąd uruchamiania kamery: " + err);
       });
-    } else {
-      alert("Nie wykryto żadnej kamery.");
     }
-  }).catch(err => {
-    alert("Błąd przy pobieraniu kamer: " + err);
-  });
-}
 
     function saveEntry() {
       const qr = document.getElementById("qrResult").value;
@@ -134,11 +127,9 @@
     }
 
     function exportCSV() {
-      let csv = "Kod QR,ID,Ilość,GPS,Czas
-";
+      let csv = "Kod QR,ID,Ilość,GPS,Czas\n";
       data.forEach(row => {
-        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}
-`;
+        csv += `${row.qr},${row.id},${row.qty},${row.gps},${row.time}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
