@@ -35,6 +35,7 @@
   </table>
 
   <div id="dayList" style="margin-top: 2rem; text-align: left;"></div>
+  <div id="totalSum" style="margin-top: 1rem; font-weight: bold;"></div>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
@@ -183,13 +184,23 @@
       }
 
       const ul = document.createElement("ul");
+      let totalSum = 0;
+
       for (let date in archive) {
+        const dayEntries = archive[date];
+        const daySum = dayEntries.reduce((sum, row) => sum + row.qty, 0);
+        totalSum += daySum;
+
         const li = document.createElement("li");
-        li.textContent = `${date} – ${archive[date].length} wpisów`;
+        li.textContent = `${date} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
         li.onclick = () => showDay(date);
         ul.appendChild(li);
       }
+
       container.appendChild(ul);
+
+      // Wyświetl łączną sumę
+      document.getElementById("totalSum").textContent = "Łączna suma ilości: " + totalSum;
     }
 
     function showDay(date) {
