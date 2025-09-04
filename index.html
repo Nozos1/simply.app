@@ -6,69 +6,81 @@
   <title>SimplyApp – Inwestycje</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; background: #fff; color: #000; text-align: center; padding: 2rem; }
-    button { margin: 0.5rem; padding: 0.5rem 1rem; font-size: 1rem; }
+    body { font-family: sans-serif; background: #f2f2f2; color: #111; text-align: center; padding: 2rem; }
+    button { margin: 0.5rem; padding: 0.6rem 1.2rem; font-size: 1rem; }
     input { margin: 0.3rem; padding: 0.5rem; font-size: 1rem; width: 200px; }
-    table { margin: 1rem auto; border-collapse: collapse; }
+    table { margin: 1rem auto; border-collapse: collapse; background: #fff; }
     th, td { padding: 0.5rem 1rem; border: 1px solid #ccc; }
-    #investmentForm { margin-top: 2rem; }
+    #app { display: none; }
   </style>
 </head>
 <body>
   <h1>SimplyApp</h1>
-  <h2>Inwestycje</h2>
 
-  <button onclick="openInvestmentForm()">➕ dodaj inwestycję</button>
+  <div id="projectSelection">
+    <h2>Wybierz inwestycję</h2>
+    <div id="projectList"></div>
+    <button onclick="showNewProjectForm()">➕ Dodaj nową inwestycję</button>
+    <div id="newProjectForm" style="margin-top:1rem; display:none;">
+      <input type="text" id="projectName" placeholder="Nazwa inwestycji"><br>
+      <button onclick="addProject()">Zapisz inwestycję</button>
+    </div>
+  </div>
 
-  <div id="investmentList" style="margin-top:2rem;"></div>
-
-  <!-- FORMULARZ -->
-  <div id="investmentForm" style="display:none;">
-    <h3>Nowa inwestycja</h3>
-    <input id="lampCount" type="number" placeholder="Ilość lamp" /><br>
-    <input id="lampPower" type="number" placeholder="Moc (W)" /><br>
-    <button onclick="saveInvestment()">Zapisz</button>
-    <button onclick="closeInvestmentForm()">Anuluj</button>
+  <div id="app">
+    <h2>Aktywna inwestycja: <span id="currentProjectName"></span></h2>
+    <p>📦 Tu będzie Twój panel QR, zapis danych, eksport itd.</p>
+    <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
   <script>
-    let investments = JSON.parse(localStorage.getItem("investments")) || [];
+    let projects = JSON.parse(localStorage.getItem("projects") || "[]");
+    let currentProject = null;
 
-    function renderInvestments() {
-      const list = document.getElementById("investmentList");
-      if (investments.length === 0) {
+    function renderProjectList() {
+      const list = document.getElementById("projectList");
+      if (projects.length === 0) {
         list.innerHTML = "<p>Brak inwestycji.</p>";
         return;
       }
-      let html = "<table><thead><tr><th>#</th><th>Ilość</th><th>Moc (W)</th></tr></thead><tbody>";
-      investments.forEach((inv, i) => {
-        html += `<tr><td>${i+1}</td><td>${inv.qty}</td><td>${inv.power}</td></tr>`;
+      let html = "<ul style='list-style:none; padding:0'>";
+      projects.forEach((proj, index) => {
+        html += `<li><button onclick="selectProject(${index})">${proj.name}</button></li>`;
       });
-      html += "</tbody></table>";
+      html += "</ul>";
       list.innerHTML = html;
     }
 
-    function openInvestmentForm() {
-      document.getElementById("investmentForm").style.display = "block";
+    function showNewProjectForm() {
+      document.getElementById("newProjectForm").style.display = "block";
     }
 
-    function closeInvestmentForm() {
-      document.getElementById("investmentForm").style.display = "none";
+    function addProject() {
+      const name = document.getElementById("projectName").value.trim();
+      if (!name) return alert("Podaj nazwę inwestycji.");
+      projects.push({ name });
+      localStorage.setItem("projects", JSON.stringify(projects));
+      document.getElementById("projectName").value = "";
+      document.getElementById("newProjectForm").style.display = "none";
+      renderProjectList();
     }
 
-    function saveInvestment() {
-      const qty = parseInt(document.getElementById("lampCount").value);
-      const power = parseInt(document.getElementById("lampPower").value);
-      if (!qty || !power) return alert("Podaj wszystkie dane.");
-      investments.push({ qty, power });
-      localStorage.setItem("investments", JSON.stringify(investments));
-      document.getElementById("lampCount").value = "";
-      document.getElementById("lampPower").value = "";
-      closeInvestmentForm();
-      renderInvestments();
+    function selectProject(index) {
+      currentProject = projects[index];
+      localStorage.setItem("currentProject", JSON.stringify(currentProject));
+      document.getElementById("projectSelection").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      document.getElementById("currentProjectName").textContent = currentProject.name;
     }
 
-    renderInvestments();
+    function backToProjectSelection() {
+      currentProject = null;
+      localStorage.removeItem("currentProject");
+      document.getElementById("projectSelection").style.display = "block";
+      document.getElementById("app").style.display = "none";
+    }
+
+    renderProjectList();
   </script>
 </body>
 </html>
