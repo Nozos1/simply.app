@@ -6,8 +6,8 @@
   <title>SimplyApp – Inwestycje</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; background: #f2f2f2; color: #111; text-align: center; padding: 2rem; }
-    button { margin: 0.5rem; padding: 0.6rem 1.2rem; font-size: 1rem; }
+    body { font-family: sans-serif; background: #f9f9f9; color: #111; text-align: center; padding: 2rem; }
+    button { margin: 0.3rem; padding: 0.5rem 1rem; font-size: 1rem; }
     input { margin: 0.3rem; padding: 0.5rem; font-size: 1rem; width: 200px; }
     table { margin: 1rem auto; border-collapse: collapse; background: #fff; }
     th, td { padding: 0.5rem 1rem; border: 1px solid #ccc; }
@@ -21,9 +21,18 @@
     <h2>Wybierz inwestycję</h2>
     <div id="projectList"></div>
     <button onclick="showNewProjectForm()">➕ Dodaj nową inwestycję</button>
+
     <div id="newProjectForm" style="margin-top:1rem; display:none;">
-      <input type="text" id="projectName" placeholder="Nazwa inwestycji"><br>
-      <button onclick="addProject()">Zapisz inwestycję</button>
+      <input type="text" id="projectName" placeholder="Nazwa inwestycji"><br><br>
+      <h3>Dodaj lampę</h3>
+      <input type="number" id="lampPower" placeholder="Moc (W)">
+      <input type="number" id="lampQty" placeholder="Ilość">
+      <button onclick="addLamp()">Dodaj lampę</button>
+
+      <div id="lampList" style="margin-top:1rem;"></div>
+
+      <br><button onclick="saveProject()">Zapisz inwestycję</button>
+      <button onclick="cancelProject()">Anuluj</button>
     </div>
   </div>
 
@@ -33,54 +42,95 @@
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
-  <script>
-    let projects = JSON.parse(localStorage.getItem("projects") || "[]");
-    let currentProject = null;
+<script>
+  let projects = JSON.parse(localStorage.getItem("projects") || "[]");
+  let currentProject = null;
+  let tempLamps = [];
 
-    function renderProjectList() {
-      const list = document.getElementById("projectList");
-      if (projects.length === 0) {
-        list.innerHTML = "<p>Brak inwestycji.</p>";
-        return;
-      }
-      let html = "<ul style='list-style:none; padding:0'>";
-      projects.forEach((proj, index) => {
-        html += `<li><button onclick="selectProject(${index})">${proj.name}</button></li>`;
-      });
-      html += "</ul>";
-      list.innerHTML = html;
+  function renderProjectList() {
+    const list = document.getElementById("projectList");
+    if (projects.length === 0) {
+      list.innerHTML = "<p>Brak inwestycji.</p>";
+      return;
     }
+    let html = "<ul style='list-style:none; padding:0'>";
+    projects.forEach((proj, index) => {
+      html += `<li><button onclick="selectProject(${index})">${proj.name}</button></li>`;
+    });
+    html += "</ul>";
+    list.innerHTML = html;
+  }
 
-    function showNewProjectForm() {
-      document.getElementById("newProjectForm").style.display = "block";
+  function showNewProjectForm() {
+    tempLamps = [];
+    updateLampList();
+    document.getElementById("newProjectForm").style.display = "block";
+  }
+
+  function addLamp() {
+    const power = parseInt(document.getElementById("lampPower").value);
+    const qty = parseInt(document.getElementById("lampQty").value);
+    if (!power || !qty) return alert("Podaj moc i ilość.");
+    tempLamps.push({ power, qty });
+    document.getElementById("lampPower").value = "";
+    document.getElementById("lampQty").value = "";
+    updateLampList();
+  }
+
+  function removeLamp(index) {
+    tempLamps.splice(index, 1);
+    updateLampList();
+  }
+
+  function updateLampList() {
+    const container = document.getElementById("lampList");
+    if (tempLamps.length === 0) {
+      container.innerHTML = "<p>Brak dodanych lamp.</p>";
+      return;
     }
+    let html = "<table><thead><tr><th>Moc (W)</th><th>Ilość</th><th>Usuń</th></tr></thead><tbody>";
+    tempLamps.forEach((lamp, index) => {
+      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td><button onclick="removeLamp(${index})">🗑️</button></td></tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  }
 
-    function addProject() {
-      const name = document.getElementById("projectName").value.trim();
-      if (!name) return alert("Podaj nazwę inwestycji.");
-      projects.push({ name });
-      localStorage.setItem("projects", JSON.stringify(projects));
-      document.getElementById("projectName").value = "";
-      document.getElementById("newProjectForm").style.display = "none";
-      renderProjectList();
-    }
-
-    function selectProject(index) {
-      currentProject = projects[index];
-      localStorage.setItem("currentProject", JSON.stringify(currentProject));
-      document.getElementById("projectSelection").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      document.getElementById("currentProjectName").textContent = currentProject.name;
-    }
-
-    function backToProjectSelection() {
-      currentProject = null;
-      localStorage.removeItem("currentProject");
-      document.getElementById("projectSelection").style.display = "block";
-      document.getElementById("app").style.display = "none";
-    }
-
+  function saveProject() {
+    const name = document.getElementById("projectName").value.trim();
+    if (!name) return alert("Podaj nazwę inwestycji.");
+    if (tempLamps.length === 0) return alert("Dodaj przynajmniej jedną lampę.");
+    projects.push({ name, lamps: tempLamps });
+    localStorage.setItem("projects", JSON.stringify(projects));
+    document.getElementById("projectName").value = "";
+    tempLamps = [];
+    updateLampList();
+    document.getElementById("newProjectForm").style.display = "none";
     renderProjectList();
-  </script>
+  }
+
+  function cancelProject() {
+    document.getElementById("newProjectForm").style.display = "none";
+    tempLamps = [];
+    updateLampList();
+  }
+
+  function selectProject(index) {
+    currentProject = projects[index];
+    localStorage.setItem("currentProject", JSON.stringify(currentProject));
+    document.getElementById("projectSelection").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("currentProjectName").textContent = currentProject.name;
+  }
+
+  function backToProjectSelection() {
+    currentProject = null;
+    localStorage.removeItem("currentProject");
+    document.getElementById("projectSelection").style.display = "block";
+    document.getElementById("app").style.display = "none";
+  }
+
+  renderProjectList();
+</script>
 </body>
 </html>
