@@ -9,7 +9,7 @@
     input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
     table { width: 100%; margin-top: 1rem; border-collapse: collapse; background: #222; }
     td, th { border: 1px solid #444; padding: 0.5rem; }
-    img.thumb { width: 50px; cursor: pointer; }
+    img.thumb { width: 50px; cursor: pointer; border: 1px solid #555; border-radius: 4px; }
     #preview { margin-bottom: 1rem; }
     #summary { margin-bottom: 1rem; font-weight: bold; }
     #dayList ul, #finishedDays ul { list-style: none; padding-left: 0; }
@@ -47,6 +47,7 @@
     </div>
     <div id="lampPlan"></div>
     <div id="finishedDays" style="margin-top:2rem; text-align:left;"></div>
+    <div id="photoGallery" style="margin-top:2rem; text-align:left;"></div>
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
@@ -83,391 +84,426 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
-  // ===== INICJALIZACJA =====
-  let projects = JSON.parse(localStorage.getItem("projects") || "[]");
-  let currentProject = null;
-  let tempLamps = [];
-  let scanner;
-  let photos = JSON.parse(localStorage.getItem("photos") || "{}");
+    // ===== INICJALIZACJA =====
+    let projects = JSON.parse(localStorage.getItem("projects") || "[]");
+    let currentProject = null;
+    let tempLamps = [];
+    let scanner;
+    let photos = JSON.parse(localStorage.getItem("photos") || "{}");
 
-  document.getElementById("projectSelection").style.display = "block";
-
-  // ===== PROJEKTY =====
-  function renderProjectList() {
-    const list = document.getElementById("projectList");
-    if (projects.length === 0) {
-      list.innerHTML = "<p>Brak inwestycji.</p>";
-      return;
-    }
-    let html = "<ul style='list-style:none; padding:0'>";
-    projects.forEach((proj, i) => {
-      html += `<li><button onclick="selectProject(${i})">${proj.name}</button></li>`;
-    });
-    html += "</ul>";
-    list.innerHTML = html;
-  }
-
-  function showNewProjectForm() {
-    tempLamps = [];
-    updateLampList();
-    document.getElementById("newProjectForm").style.display = "block";
-  }
-
-  function addLamp() {
-    const p = parseInt(document.getElementById("lampPower").value);
-    const q = parseInt(document.getElementById("lampQty").value);
-    if (!p || !q) return;
-    tempLamps.push({ power: p, qty: q });
-    document.getElementById("lampPower").value = "";
-    document.getElementById("lampQty").value = "";
-    updateLampList();
-  }
-
-  function removeLamp(i) {
-    tempLamps.splice(i, 1);
-    updateLampList();
-  }
-
-  function updateLampList() {
-    const c = document.getElementById("lampList");
-    if (tempLamps.length === 0) {
-      c.innerHTML = "<p>Brak lamp.</p>";
-      return;
-    }
-    let h = "<table><tr><th>Moc</th><th>Ilość</th><th>Usuń</th></tr>";
-    tempLamps.forEach((l, i) => {
-      h += `<tr><td>${l.power}</td><td>${l.qty}</td><td><button onclick="removeLamp(${i})">🗑️</button></td></tr>`;
-    });
-    h += "</table>";
-    c.innerHTML = h;
-  }
-
-  function saveProject() {
-    const n = document.getElementById("projectName").value.trim();
-    if (!n) return;
-    if (tempLamps.length === 0) return;
-    projects.push({ name: n, lamps: tempLamps });
-    localStorage.setItem("projects", JSON.stringify(projects));
-    document.getElementById("projectName").value = "";
-    tempLamps = [];
-    updateLampList();
-    document.getElementById("newProjectForm").style.display = "none";
-    renderProjectList();
-  }
-
-  function cancelProject() {
-    document.getElementById("newProjectForm").style.display = "none";
-    tempLamps = [];
-    updateLampList();
-  }
-
-  function selectProject(i) {
-    currentProject = projects[i];
-    localStorage.setItem("currentProject", JSON.stringify(currentProject));
-    document.getElementById("projectSelection").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    document.getElementById("currentProjectName").textContent = currentProject.name;
-    renderLampPlan();
-    updateProgress();
-    renderFinishedDays();
-  }
-
-  function backToProjectSelection() {
-    currentProject = null;
     document.getElementById("projectSelection").style.display = "block";
-    document.getElementById("app").style.display = "none";
-  }
 
-  function openMontaz() {
-    document.getElementById("app").style.display = "none";
-    document.getElementById("montazApp").style.display = "block";
-    document.getElementById("montazProjectName").textContent = currentProject.name;
-    loadScans();
-    renderDayList();
-  }
-
-  function closeMontaz() {
-    document.getElementById("montazApp").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    renderLampPlan();
-    updateProgress();
-    renderFinishedDays();
-  }
-
-  // ===== LAMPY I POSTĘP =====
-  function renderLampPlan() {
-    const c = document.getElementById("lampPlan");
-    if (!currentProject || !currentProject.lamps) {
-      c.innerHTML = "Brak lamp";
-      return;
-    }
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    let allScans = [...scans];
-    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
-
-    let h = "<table><tr><th>Moc</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr>";
-    currentProject.lamps.forEach(l => {
-      const inst = allScans.filter(s => s.power === l.power).reduce((a, b) => a + b.qty, 0);
-      const rem = l.qty - inst;
-      h += `<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
-    });
-    h += "</table>";
-    c.innerHTML = h;
-  }
-
-  function updateProgress() {
-    if (!currentProject || !currentProject.lamps) return;
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    let allScans = [...scans];
-    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
-
-    const totalPlanned = currentProject.lamps.reduce((a, b) => a + b.qty, 0);
-    const totalInstalled = allScans.reduce((a, b) => a + b.qty, 0);
-    const percent = totalPlanned > 0 ? Math.round((totalInstalled / totalPlanned) * 100) : 0;
-    document.getElementById("progressFill").style.width = percent + "%";
-    document.getElementById("progressFill").textContent = percent + "%";
-  }
-
-  // ===== ZAKOŃCZONE DNI =====
-  function renderFinishedDays() {
-    if (!currentProject) return;
-    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    const c = document.getElementById("finishedDays");
-    c.innerHTML = "<h3>📅 Zakończone dni:</h3>";
-    if (Object.keys(archive).length === 0) {
-      c.innerHTML += "<p>Brak zakończonych dni.</p>";
-      return;
-    }
-    const ul = document.createElement("ul");
-    for (let d in archive) {
-      const dayEntries = archive[d];
-      const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
-      const li = document.createElement("li");
-      li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
-      li.onclick = () => showDayInProject(d);
-      ul.appendChild(li);
-    }
-    c.appendChild(ul);
-  }
-
-  function showDayInProject(date) {
-    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    let rows = archive[date];
-    if (!rows) return;
-    let html = `<h3>Dane z dnia ${date}</h3><table style='width:100%; border-collapse:collapse;'>
-      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc</th><th>GPS</th><th>Czas</th></tr></thead><tbody>`;
-    rows.forEach(r => {
-      html += `<tr><td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td></tr>`;
-    });
-    html += "</tbody></table>";
-    html += `<button onclick="renderFinishedDays()">⬅️ Wróć</button> 
-             <button onclick="exportDayCSV('${date}')">📤 Eksportuj CSV</button>`;
-    document.getElementById("finishedDays").innerHTML = html;
-  }
-
-  function exportDayCSV(date) {
-    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    let rows = archive[date];
-    if (!rows) return;
-    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas\\n";
-    rows.forEach(r => { csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time}\\n`; });
-    const blob = new Blob([csv], { type: "text/csv" });
-    saveAs(blob, `${currentProject.name}_${date}.csv`);
-  }
-  // ===== QR SKANER =====
-  function startScanner() {
-    if (!scanner) { scanner = new Html5Qrcode("preview"); }
-    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-      msg => {
-        document.getElementById("qrResult").value = msg;
-        scanner.stop().then(() => {
-          document.getElementById("preview").innerHTML = "";
-          scanner = null;
-        });
+    // ===== PROJEKTY =====
+    function renderProjectList() {
+      const list = document.getElementById("projectList");
+      if (projects.length === 0) {
+        list.innerHTML = "<p>Brak inwestycji.</p>";
+        return;
       }
-    ).catch(e => alert("Błąd kamery: " + e));
-  }
+      let html = "<ul style='list-style:none; padding:0'>";
+      projects.forEach((proj, i) => {
+        html += `<li><button onclick="selectProject(${i})">${proj.name}</button></li>`;
+      });
+      html += "</ul>";
+      list.innerHTML = html;
+    }
 
-  // ===== ZAPIS WEJŚCIA =====
-  function saveEntry() {
-    const qr = document.getElementById("qrResult").value;
-    const id = document.getElementById("idInput").value.trim();
-    const qty = parseInt(document.getElementById("qtyInput").value) || 0;
-    const power = parseInt(document.getElementById("powerInput").value) || 0;
-    if (!qr || !id) return alert("Skan QR i ID wymagane");
+    function showNewProjectForm() {
+      tempLamps = [];
+      updateLampList();
+      document.getElementById("newProjectForm").style.display = "block";
+    }
 
-    const file = document.getElementById("photoInput").files[0];
-    const time = new Date().toLocaleString();
+    function addLamp() {
+      const p = parseInt(document.getElementById("lampPower").value);
+      const q = parseInt(document.getElementById("lampQty").value);
+      if (!p || !q) return;
+      tempLamps.push({ power: p, qty: q });
+      document.getElementById("lampPower").value = "";
+      document.getElementById("lampQty").value = "";
+      updateLampList();
+    }
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        photos[id] = e.target.result;
-        localStorage.setItem("photos", JSON.stringify(photos));
+    function removeLamp(i) {
+      tempLamps.splice(i, 1);
+      updateLampList();
+    }
+
+    function updateLampList() {
+      const c = document.getElementById("lampList");
+      if (tempLamps.length === 0) {
+        c.innerHTML = "<p>Brak lamp.</p>";
+        return;
+      }
+      let h = "<table><tr><th>Moc</th><th>Ilość</th><th>Usuń</th></tr>";
+      tempLamps.forEach((l, i) => {
+        h += `<tr><td>${l.power}</td><td>${l.qty}</td><td><button onclick="removeLamp(${i})">🗑️</button></td></tr>`;
+      });
+      h += "</table>";
+      c.innerHTML = h;
+    }
+
+    function saveProject() {
+      const n = document.getElementById("projectName").value.trim();
+      if (!n) return;
+      if (tempLamps.length === 0) return;
+      projects.push({ name: n, lamps: tempLamps });
+      localStorage.setItem("projects", JSON.stringify(projects));
+      document.getElementById("projectName").value = "";
+      tempLamps = [];
+      updateLampList();
+      document.getElementById("newProjectForm").style.display = "none";
+      renderProjectList();
+    }
+
+    function cancelProject() {
+      document.getElementById("newProjectForm").style.display = "none";
+      tempLamps = [];
+      updateLampList();
+    }
+
+    function selectProject(i) {
+      currentProject = projects[i];
+      localStorage.setItem("currentProject", JSON.stringify(currentProject));
+      document.getElementById("projectSelection").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      document.getElementById("currentProjectName").textContent = currentProject.name;
+      renderLampPlan();
+      updateProgress();
+      renderFinishedDays();
+      renderPhotoGallery();
+    }
+
+    function backToProjectSelection() {
+      currentProject = null;
+      document.getElementById("projectSelection").style.display = "block";
+      document.getElementById("app").style.display = "none";
+    }
+
+    function openMontaz() {
+      document.getElementById("app").style.display = "none";
+      document.getElementById("montazApp").style.display = "block";
+      document.getElementById("montazProjectName").textContent = currentProject.name;
+      loadScans();
+      renderDayList();
+    }
+
+    function closeMontaz() {
+      document.getElementById("montazApp").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      renderLampPlan();
+      updateProgress();
+      renderFinishedDays();
+      renderPhotoGallery();
+    }
+
+    // ===== LAMPY I POSTĘP =====
+    function renderLampPlan() {
+      const c = document.getElementById("lampPlan");
+      if (!currentProject || !currentProject.lamps) {
+        c.innerHTML = "Brak lamp";
+        return;
+      }
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      let allScans = [...scans];
+      Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+      let h = "<table><tr><th>Moc</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr>";
+      currentProject.lamps.forEach(l => {
+        const inst = allScans.filter(s => s.power === l.power).reduce((a, b) => a + b.qty, 0);
+        const rem = l.qty - inst;
+        h += `<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
+      });
+      h += "</table>";
+      c.innerHTML = h;
+    }
+
+    function updateProgress() {
+      if (!currentProject || !currentProject.lamps) return;
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      let allScans = [...scans];
+      Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+      const totalPlanned = currentProject.lamps.reduce((a, b) => a + b.qty, 0);
+      const totalInstalled = allScans.reduce((a, b) => a + b.qty, 0);
+      const percent = totalPlanned > 0 ? Math.round((totalInstalled / totalPlanned) * 100) : 0;
+      document.getElementById("progressFill").style.width = percent + "%";
+      document.getElementById("progressFill").textContent = percent + "%";
+    }
+
+    // ===== ZAKOŃCZONE DNI =====
+    function renderFinishedDays() {
+      if (!currentProject) return;
+      const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      const c = document.getElementById("finishedDays");
+      c.innerHTML = "<h3>📅 Zakończone dni:</h3>";
+      if (Object.keys(archive).length === 0) {
+        c.innerHTML += "<p>Brak zakończonych dni.</p>";
+        return;
+      }
+      const ul = document.createElement("ul");
+      for (let d in archive) {
+        const dayEntries = archive[d];
+        const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
+        const li = document.createElement("li");
+        li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
+        li.onclick = () => showDayInProject(d);
+        ul.appendChild(li);
+      }
+      c.appendChild(ul);
+    }
+
+    function showDayInProject(date) {
+      const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      let rows = archive[date];
+      if (!rows) return;
+      let html = `<h3>Dane z dnia ${date}</h3><table style='width:100%; border-collapse:collapse;'>
+        <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc</th><th>GPS</th><th>Czas</th></tr></thead><tbody>`;
+      rows.forEach(r => {
+        html += `<tr><td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td></tr>`;
+      });
+      html += "</tbody></table>";
+      html += `<button onclick="renderFinishedDays()">⬅️ Wróć</button> 
+               <button onclick="exportDayCSV('${date}')">📤 Eksportuj CSV</button>`;
+      document.getElementById("finishedDays").innerHTML = html;
+    }
+
+    function exportDayCSV(date) {
+      const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      let rows = archive[date];
+      if (!rows) return;
+      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas\\n";
+      rows.forEach(r => { csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time}\\n`; });
+      const blob = new Blob([csv], { type: "text/csv" });
+      saveAs(blob, `${currentProject.name}_${date}.csv`);
+    }
+    // ===== QR SKANER =====
+    function startScanner() {
+      if (!scanner) { scanner = new Html5Qrcode("preview"); }
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        msg => {
+          document.getElementById("qrResult").value = msg;
+          scanner.stop().then(() => {
+            document.getElementById("preview").innerHTML = "";
+            scanner = null;
+          });
+        }
+      ).catch(e => alert("Błąd kamery: " + e));
+    }
+
+    // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
+    function saveEntry() {
+      const qr = document.getElementById("qrResult").value;
+      const id = document.getElementById("idInput").value.trim();
+      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+      const power = parseInt(document.getElementById("powerInput").value) || 0;
+      if (!qr || !id) return alert("Skan QR i ID wymagane");
+
+      const file = document.getElementById("photoInput").files[0];
+      const time = new Date().toLocaleString();
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          photos[id] = e.target.result;
+          localStorage.setItem("photos", JSON.stringify(photos));
+          finishSave(qr, id, qty, power, time);
+        };
+        reader.readAsDataURL(file);
+      } else {
         finishSave(qr, id, qty, power, time);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      finishSave(qr, id, qty, power, time);
-    }
-  }
-
-  function finishSave(qr, id, qty, power, time) {
-    const gps = ""; // można dodać navigator.geolocation
-    const row = { qr, id, qty, power, gps, time, photo: id + ".jpg" };
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    scans.push(row);
-    localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
-    addRow(row, scans.length - 1);
-    updateSummary();
-    renderLampPlan();
-    updateProgress();
-  }
-
-  function addRow(r, i) {
-    const t = document.querySelector("#dataTable tbody");
-    const tr = document.createElement("tr");
-    let imgHTML = "";
-    if (photos[r.id]) imgHTML = `<img src="${photos[r.id]}" class="thumb" onclick="showPhoto('${r.id}')">`;
-    tr.innerHTML = `<td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td><td>${imgHTML}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
-    t.appendChild(tr);
-  }
-
-  function showPhoto(id) {
-    if (photos[id]) {
-      const w = window.open("");
-      w.document.write(`<img src="${photos[id]}" style="width:100%">`);
-    }
-  }
-
-  function loadScans() {
-    const t = document.querySelector("#dataTable tbody");
-    t.innerHTML = "";
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    scans.forEach((r, i) => addRow(r, i));
-    updateSummary();
-  }
-
-  function deleteEntry(i) {
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    scans.splice(i, 1);
-    localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
-    loadScans();
-  }
-
-  function clearData() {
-    localStorage.removeItem("scans_" + currentProject.name);
-    document.querySelector("#dataTable tbody").innerHTML = "";
-    updateSummary();
-    document.getElementById("raportDiv").innerHTML = "";
-  }
-
-  // ===== PODSUMOWANIA =====
-  function updateSummary() {
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    const sum = scans.reduce((a, r) => a + r.qty, 0);
-    document.getElementById("summary").textContent = "Suma ilości: " + sum;
-  }
-
-  function exportCSV() {
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
-    scans.forEach(r => {
-      csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
-    });
-    const blob = new Blob([csv], { type: "text/csv" });
-    saveAs(blob, "raport.csv");
-  }
-
-  async function exportZIP() {
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    let zip = new JSZip();
-    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
-    scans.forEach(r => {
-      csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
-      if (photos[r.id]) {
-        const base64 = photos[r.id].split(",")[1];
-        zip.file("images/" + r.photo, base64, { base64: true });
       }
-    });
-    zip.file("raport.csv", csv);
-    const blob = await zip.generateAsync({ type: "blob" });
-    saveAs(blob, "raport.zip");
-  }
-
-  // ===== ARCHIWUM =====
-  function endDay() {
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    if (scans.length === 0) return;
-    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    const today = new Date().toISOString().slice(0, 10);
-    if (!archive[today]) archive[today] = [];
-    archive[today] = archive[today].concat(scans);
-    localStorage.setItem("archive_" + currentProject.name, JSON.stringify(archive));
-    clearData();
-    alert("Zapisano dzień: " + today);
-    renderDayList();
-    renderLampPlan();
-    updateProgress();
-    renderFinishedDays();
-  }
-
-  function renderDayList() {
-    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    const c = document.getElementById("dayList");
-    c.innerHTML = "<h3>Zapisane dni:</h3>";
-    if (Object.keys(archive).length === 0) {
-      c.innerHTML += "<p>Brak dni.</p>";
-      return;
-    }
-    const ul = document.createElement("ul");
-    let total = 0;
-    for (let d in archive) {
-      const dayEntries = archive[d];
-      const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
-      total += daySum;
-      const li = document.createElement("li");
-      li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
-      ul.appendChild(li);
-    }
-    c.appendChild(ul);
-    document.getElementById("totalSum").textContent = "Łączna suma ilości: " + total;
-  }
-
-  // ===== RAPORT MONTAŻU =====
-  function showRaport() {
-    if (!currentProject) return;
-    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
-    let allScans = [...scans];
-    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
-
-    if (allScans.length === 0) {
-      document.getElementById("raportDiv").innerHTML = "<p>Brak danych do raportu.</p>";
-      return;
     }
 
-    let html = "<h3>Raport montażu lamp:</h3><table><tr><th>Moc (W)</th><th>Planowano</th><th>Zamontowano</th><th>Pozostało</th></tr>";
-    let sumPlan = 0, sumInst = 0, sumRem = 0;
+    function finishSave(qr, id, qty, power, time) {
+      const gps = ""; // można dodać navigator.geolocation
+      const row = { qr, id, qty, power, gps, time, photo: id + ".jpg" };
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      scans.push(row);
+      localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+      addRow(row, scans.length - 1);
+      updateSummary();
+      renderLampPlan();
+      updateProgress();
+      renderPhotoGallery();
+    }
 
-    currentProject.lamps.forEach(lamp => {
-      const inst = allScans.filter(s => s.power === lamp.power).reduce((a, b) => a + b.qty, 0);
-      const rem = lamp.qty - inst;
-      sumPlan += lamp.qty;
-      sumInst += inst;
-      sumRem += rem;
-      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
-    });
+    function addRow(r, i) {
+      const t = document.querySelector("#dataTable tbody");
+      const tr = document.createElement("tr");
+      let imgHTML = "";
+      if (photos[r.id]) imgHTML = `<img src="${photos[r.id]}" class="thumb" onclick="showPhoto('${r.id}')">`;
+      tr.innerHTML = `<td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td><td>${imgHTML}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+      t.appendChild(tr);
+    }
 
-    html += `<tr><td><b>SUMA</b></td><td><b>${sumPlan}</b></td><td><b>${sumInst}</b></td><td><b>${sumRem}</b></td></tr>`;
-    html += "</table>";
-    document.getElementById("raportDiv").innerHTML = html;
-  }
+    function showPhoto(id) {
+      if (photos[id]) {
+        const w = window.open("");
+        w.document.write(`<img src="${photos[id]}" style="width:100%">`);
+      }
+    }
 
-  // ===== START =====
-  renderProjectList();
-</script>
+    function loadScans() {
+      const t = document.querySelector("#dataTable tbody");
+      t.innerHTML = "";
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      scans.forEach((r, i) => addRow(r, i));
+      updateSummary();
+    }
+
+    function deleteEntry(i) {
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      scans.splice(i, 1);
+      localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+      loadScans();
+    }
+
+    function clearData() {
+      localStorage.removeItem("scans_" + currentProject.name);
+      document.querySelector("#dataTable tbody").innerHTML = "";
+      updateSummary();
+      document.getElementById("raportDiv").innerHTML = "";
+    }
+
+    // ===== PODSUMOWANIA =====
+    function updateSummary() {
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      const sum = scans.reduce((a, r) => a + r.qty, 0);
+      document.getElementById("summary").textContent = "Suma ilości: " + sum;
+    }
+
+    function exportCSV() {
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
+      scans.forEach(r => {
+        csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      saveAs(blob, "raport.csv");
+    }
+
+    async function exportZIP() {
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      let zip = new JSZip();
+      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
+      scans.forEach(r => {
+        csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
+        if (photos[r.id]) {
+          const base64 = photos[r.id].split(",")[1];
+          zip.file("images/" + r.photo, base64, { base64: true });
+        }
+      });
+      zip.file("raport.csv", csv);
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveAs(blob, "raport.zip");
+    }
+
+    // ===== ARCHIWUM =====
+    function endDay() {
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      if (scans.length === 0) return;
+      let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      const today = new Date().toISOString().slice(0, 10);
+      if (!archive[today]) archive[today] = [];
+      archive[today] = archive[today].concat(scans);
+      localStorage.setItem("archive_" + currentProject.name, JSON.stringify(archive));
+      clearData();
+      alert("Zapisano dzień: " + today);
+      renderDayList();
+      renderLampPlan();
+      updateProgress();
+      renderFinishedDays();
+      renderPhotoGallery();
+    }
+
+    function renderDayList() {
+      const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      const c = document.getElementById("dayList");
+      c.innerHTML = "<h3>Zapisane dni:</h3>";
+      if (Object.keys(archive).length === 0) {
+        c.innerHTML += "<p>Brak dni.</p>";
+        return;
+      }
+      const ul = document.createElement("ul");
+      let total = 0;
+      for (let d in archive) {
+        const dayEntries = archive[d];
+        const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
+        total += daySum;
+        const li = document.createElement("li");
+        li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
+        ul.appendChild(li);
+      }
+      c.appendChild(ul);
+      document.getElementById("totalSum").textContent = "Łączna suma ilości: " + total;
+    }
+
+    // ===== RAPORT MONTAŻU =====
+    function showRaport() {
+      if (!currentProject) return;
+      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+      let allScans = [...scans];
+      Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+      if (allScans.length === 0) {
+        document.getElementById("raportDiv").innerHTML = "<p>Brak danych do raportu.</p>";
+        return;
+      }
+
+      let html = "<h3>Raport montażu lamp:</h3><table><tr><th>Moc (W)</th><th>Planowano</th><th>Zamontowano</th><th>Pozostało</th></tr>";
+      let sumPlan = 0, sumInst = 0, sumRem = 0;
+
+      currentProject.lamps.forEach(lamp => {
+        const inst = allScans.filter(s => s.power === lamp.power).reduce((a, b) => a + b.qty, 0);
+        const rem = lamp.qty - inst;
+        sumPlan += lamp.qty;
+        sumInst += inst;
+        sumRem += rem;
+        html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
+      });
+
+      html += `<tr><td><b>SUMA</b></td><td><b>${sumPlan}</b></td><td><b>${sumInst}</b></td><td><b>${sumRem}</b></td></tr>`;
+      html += "</table>";
+      document.getElementById("raportDiv").innerHTML = html;
+    }
+
+    // ===== GALERIA ZDJĘĆ =====
+    function renderPhotoGallery() {
+      if (!currentProject) return;
+      const scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+      const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+
+      let allScans = [...scans];
+      Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+      const c = document.getElementById("photoGallery");
+      c.innerHTML = "<h3>📸 Zdjęcia z montażu:</h3>";
+      let html = "";
+
+      allScans.forEach(r => {
+        if (photos[r.id]) {
+          html += `<div style="display:inline-block; margin:5px; text-align:center;">
+                     <img src="${photos[r.id]}" class="thumb" onclick="showPhoto('${r.id}')"><br>
+                     <small>${r.id}</small>
+                   </div>`;
+        }
+      });
+
+      if (html === "") {
+        c.innerHTML += "<p>Brak zdjęć.</p>";
+      } else {
+        c.innerHTML += html;
+      }
+    }
+
+    // ===== START =====
+    renderProjectList();
+  </script>
 </body>
 </html>
