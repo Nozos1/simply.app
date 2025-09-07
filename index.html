@@ -8,11 +8,13 @@
   <style>
     body { font-family: sans-serif; background: #f9f9f9; color: #111; text-align: center; padding: 2rem; }
     button { margin: 0.3rem; padding: 0.6rem 1.2rem; font-size: 1rem; }
+    input { margin: 0.3rem; padding: 0.5rem; }
     table { margin: 1rem auto; border-collapse: collapse; background: #fff; }
     th, td { padding: 0.5rem 1rem; border: 1px solid #ccc; }
     #progressBar { width: 80%; height: 24px; background: #ddd; margin: 1rem auto; border-radius: 6px; overflow: hidden; }
     #progressFill { height: 100%; width: 0%; background: #4caf50; text-align: center; color: white; line-height: 24px; }
     #app, #montazApp { display: none; }
+    #preview { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
@@ -30,9 +32,7 @@
       <input type="number" id="lampPower" placeholder="Moc (W)">
       <input type="number" id="lampQty" placeholder="Ilość">
       <button onclick="addLamp()">Dodaj lampę</button>
-
       <div id="lampList" style="margin-top:1rem;"></div>
-
       <br><button onclick="saveProject()">Zapisz inwestycję</button>
       <button onclick="cancelProject()">Anuluj</button>
     </div>
@@ -42,157 +42,70 @@
   <div id="app">
     <h2>Aktywna inwestycja: <span id="currentProjectName"></span></h2>
     <button onclick="openMontaz()">🔧 Montaż</button>
-
-    <div id="progressBar">
-      <div id="progressFill">0%</div>
-    </div>
-
+    <div id="progressBar"><div id="progressFill">0%</div></div>
     <h3>Plan lamp</h3>
     <div id="lampPlan"></div>
-
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
   <!-- Panel montażu QR -->
   <div id="montazApp">
     <h2>Montaż – <span id="montazProjectName"></span></h2>
-    <div id="qrPanel">
-      <p>📷 Tutaj będzie Twój pełny panel QR (skaner, pola, tabela, eksport).</p>
-    </div>
+    <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
+    <button onclick="startScanner()">Skanuj kod QR</button><br>
+    <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+    <input type="text" id="idInput" placeholder="Wpisz ID"><br>
+    <input type="number" id="qtyInput" placeholder="Ilość"><br>
+    <input type="number" id="powerInput" placeholder="Moc (W)"><br>
+    <button onclick="saveEntry()">Zapisz</button>
+    <button onclick="exportCSV()">Eksportuj CSV</button>
+    <button onclick="clearData()">Wyczyść dane</button>
+    <h2 id="summary">Suma ilości: 0</h2>
+    <table id="dataTable">
+      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th><th>Usuń</th></tr></thead>
+      <tbody></tbody>
+    </table>
     <button onclick="closeMontaz()">⬅️ Wróć do inwestycji</button>
   </div>
 
+  <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
   let projects = JSON.parse(localStorage.getItem("projects") || "[]");
   let currentProject = null;
   let tempLamps = [];
+  let scanner;
 
   function renderProjectList() {
     const list = document.getElementById("projectList");
-    if (projects.length === 0) {
-      list.innerHTML = "<p>Brak inwestycji.</p>";
-      return;
-    }
+    if (projects.length === 0) { list.innerHTML = "<p>Brak inwestycji.</p>"; return; }
     let html = "<ul style='list-style:none; padding:0'>";
-    projects.forEach((proj, index) => {
-      html += `<li><button onclick="selectProject(${index})">${proj.name}</button></li>`;
-    });
+    projects.forEach((proj, index) => { html += `<li><button onclick="selectProject(${index})">${proj.name}</button></li>`; });
     html += "</ul>";
     list.innerHTML = html;
   }
 
-  function showNewProjectForm() {
-    tempLamps = [];
-    updateLampList();
-    document.getElementById("newProjectForm").style.display = "block";
-  }
+  function showNewProjectForm() { tempLamps = []; updateLampList(); document.getElementById("newProjectForm").style.display = "block"; }
+  function addLamp() { const power = parseInt(document.getElementById("lampPower").value); const qty = parseInt(document.getElementById("lampQty").value); if (!power||!qty) return alert("Podaj moc i ilość."); tempLamps.push({ power, qty }); document.getElementById("lampPower").value=""; document.getElementById("lampQty").value=""; updateLampList(); }
+  function removeLamp(i) { tempLamps.splice(i,1); updateLampList(); }
+  function updateLampList() { const c=document.getElementById("lampList"); if(tempLamps.length===0){c.innerHTML="<p>Brak dodanych lamp.</p>";return;} let h="<table><thead><tr><th>Moc (W)</th><th>Ilość</th><th>Usuń</th></tr></thead><tbody>"; tempLamps.forEach((l,i)=>{h+=`<tr><td>${l.power}</td><td>${l.qty}</td><td><button onclick="removeLamp(${i})">🗑️</button></td></tr>`;}); h+="</tbody></table>"; c.innerHTML=h; }
+  function saveProject(){const n=document.getElementById("projectName").value.trim(); if(!n)return alert("Podaj nazwę inwestycji."); if(tempLamps.length===0)return alert("Dodaj przynajmniej jedną lampę."); projects.push({name:n,lamps:tempLamps}); localStorage.setItem("projects",JSON.stringify(projects)); document.getElementById("projectName").value=""; tempLamps=[]; updateLampList(); document.getElementById("newProjectForm").style.display="none"; renderProjectList(); }
+  function cancelProject(){document.getElementById("newProjectForm").style.display="none"; tempLamps=[]; updateLampList();}
+  function selectProject(i){currentProject=projects[i]; localStorage.setItem("currentProject",JSON.stringify(currentProject)); document.getElementById("projectSelection").style.display="none"; document.getElementById("app").style.display="block"; document.getElementById("currentProjectName").textContent=currentProject.name; renderLampPlan(); updateProgress(); }
+  function backToProjectSelection(){currentProject=null; localStorage.removeItem("currentProject"); document.getElementById("projectSelection").style.display="block"; document.getElementById("app").style.display="none";}
+  function openMontaz(){if(!currentProject)return; document.getElementById("app").style.display="none"; document.getElementById("montazApp").style.display="block"; document.getElementById("montazProjectName").textContent=currentProject.name; loadScans(); }
+  function closeMontaz(){document.getElementById("montazApp").style.display="none"; document.getElementById("app").style.display="block"; renderLampPlan(); updateProgress();}
 
-  function addLamp() {
-    const power = parseInt(document.getElementById("lampPower").value);
-    const qty = parseInt(document.getElementById("lampQty").value);
-    if (!power || !qty) return alert("Podaj moc i ilość.");
-    tempLamps.push({ power, qty });
-    document.getElementById("lampPower").value = "";
-    document.getElementById("lampQty").value = "";
-    updateLampList();
-  }
+  function startScanner(){ if(!scanner){scanner=new Html5Qrcode("preview");} scanner.start({facingMode:"environment"},{fps:10,qrbox:250},qrCodeMessage=>{document.getElementById("qrResult").value=qrCodeMessage; scanner.stop().then(()=>{document.getElementById("preview").innerHTML=""; scanner=null;});}).catch(err=>{alert("Błąd kamery: "+err);}); }
+  function saveEntry(){ const qr=document.getElementById("qrResult").value; const id=document.getElementById("idInput").value; const qty=parseInt(document.getElementById("qtyInput").value)||0; const power=parseInt(document.getElementById("powerInput").value)||0; if(!qr)return alert("Najpierw zeskanuj kod QR."); if(!navigator.geolocation)return alert("Brak geolokalizacji."); navigator.geolocation.getCurrentPosition(pos=>{const gps=`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`; const time=new Date().toLocaleString(); const row={qr,id,qty,power,gps,time}; let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); scans.push(row); localStorage.setItem("scans_"+currentProject.name,JSON.stringify(scans)); addRow(row,scans.length-1); updateSummary();},err=>alert("GPS error: "+err.message),{enableHighAccuracy:true,timeout:10000,maximumAge:0}); }
+  function addRow(r,i){const t=document.querySelector("#dataTable tbody");const tr=document.createElement("tr");tr.innerHTML=`<td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power??""}</td><td>${r.gps}</td><td>${r.time}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;t.appendChild(tr);}
+  function loadScans(){const t=document.querySelector("#dataTable tbody");t.innerHTML="";let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");scans.forEach((r,i)=>addRow(r,i));updateSummary();}
+  function deleteEntry(i){let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");scans.splice(i,1);localStorage.setItem("scans_"+currentProject.name,JSON.stringify(scans));loadScans();}
+  function clearData(){localStorage.removeItem("scans_"+currentProject.name);document.querySelector("#dataTable tbody").innerHTML="";updateSummary();}
+  function updateSummary(){let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");const sum=scans.reduce((a,r)=>a+r.qty,0);document.getElementById("summary").textContent="Suma ilości: "+sum;}
+  function exportCSV(){let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");let csv="Kod QR,ID,Ilość,Moc (W),GPS,Czas\n";scans.forEach(r=>{csv+=`${r.qr},${r.id},${r.qty},${r.power??""},${r.gps},${r.time}\n`;});const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`scans_${currentProject.name}.csv`;a.click();}
 
-  function removeLamp(index) {
-    tempLamps.splice(index, 1);
-    updateLampList();
-  }
-
-  function updateLampList() {
-    const container = document.getElementById("lampList");
-    if (tempLamps.length === 0) {
-      container.innerHTML = "<p>Brak dodanych lamp.</p>";
-      return;
-    }
-    let html = "<table><thead><tr><th>Moc (W)</th><th>Ilość</th><th>Usuń</th></tr></thead><tbody>";
-    tempLamps.forEach((lamp, index) => {
-      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td><button onclick="removeLamp(${index})">🗑️</button></td></tr>`;
-    });
-    html += "</tbody></table>";
-    container.innerHTML = html;
-  }
-
-  function saveProject() {
-    const name = document.getElementById("projectName").value.trim();
-    if (!name) return alert("Podaj nazwę inwestycji.");
-    if (tempLamps.length === 0) return alert("Dodaj przynajmniej jedną lampę.");
-    projects.push({ name, lamps: tempLamps });
-    localStorage.setItem("projects", JSON.stringify(projects));
-    document.getElementById("projectName").value = "";
-    tempLamps = [];
-    updateLampList();
-    document.getElementById("newProjectForm").style.display = "none";
-    renderProjectList();
-  }
-
-  function cancelProject() {
-    document.getElementById("newProjectForm").style.display = "none";
-    tempLamps = [];
-    updateLampList();
-  }
-
-  function selectProject(index) {
-    currentProject = projects[index];
-    localStorage.setItem("currentProject", JSON.stringify(currentProject));
-    document.getElementById("projectSelection").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    document.getElementById("currentProjectName").textContent = currentProject.name;
-    renderLampPlan();
-    updateProgress();
-  }
-
-  function backToProjectSelection() {
-    currentProject = null;
-    localStorage.removeItem("currentProject");
-    document.getElementById("projectSelection").style.display = "block";
-    document.getElementById("app").style.display = "none";
-  }
-
-  function openMontaz() {
-    if (!currentProject) return;
-    document.getElementById("app").style.display = "none";
-    document.getElementById("montazApp").style.display = "block";
-    document.getElementById("montazProjectName").textContent = currentProject.name;
-  }
-
-  function closeMontaz() {
-    document.getElementById("montazApp").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    renderLampPlan();
-    updateProgress();
-  }
-
-  function renderLampPlan() {
-    const container = document.getElementById("lampPlan");
-    if (!currentProject || !currentProject.lamps || currentProject.lamps.length === 0) {
-      container.innerHTML = "<p>Brak lamp w tej inwestycji.</p>";
-      return;
-    }
-    let scans = JSON.parse(localStorage.getItem("scans_"+currentProject.name) || "[]");
-    let html = "<table><thead><tr><th>Moc (W)</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr></thead><tbody>";
-    currentProject.lamps.forEach(lamp => {
-      const installed = scans.filter(s => s.power === lamp.power).reduce((a,b) => a+b.qty, 0);
-      const remaining = lamp.qty - installed;
-      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${installed}</td><td>${remaining}</td></tr>`;
-    });
-    html += "</tbody></table>";
-    container.innerHTML = html;
-  }
-
-  function updateProgress() {
-    if (!currentProject || !currentProject.lamps) return;
-    let scans = JSON.parse(localStorage.getItem("scans_"+currentProject.name) || "[]");
-    const totalPlanned = currentProject.lamps.reduce((a,b) => a+b.qty, 0);
-    const totalInstalled = scans.reduce((a,b) => a+b.qty, 0);
-    const percent = totalPlanned > 0 ? Math.round((totalInstalled / totalPlanned) * 100) : 0;
-    const bar = document.getElementById("progressFill");
-    bar.style.width = percent + "%";
-    bar.textContent = percent + "%";
-  }
+  function renderLampPlan(){const c=document.getElementById("lampPlan");if(!currentProject||!currentProject.lamps||currentProject.lamps.length===0){c.innerHTML="<p>Brak lamp.</p>";return;}let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");let h="<table><thead><tr><th>Moc (W)</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr></thead><tbody>";currentProject.lamps.forEach(l=>{const inst=scans.filter(s=>s.power===l.power).reduce((a,b)=>a+b.qty,0);const rem=l.qty-inst;h+=`<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;});h+="</tbody></table>";c.innerHTML=h;}
+  function updateProgress(){if(!currentProject||!currentProject.lamps)return;let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]");const totalPlanned=currentProject.lamps.reduce((a,b)=>a+b.qty,0);const totalInstalled=scans.reduce((a,b)=>a+b.qty,0);const percent=totalPlanned>0?Math.round((totalInstalled/totalPlanned)*100):0;const bar=document.getElementById("progressFill");bar.style.width=percent+"%";bar.textContent=percent+"%";}
 
   renderProjectList();
 </script>
