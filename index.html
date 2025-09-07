@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -83,6 +84,9 @@
   let tempLamps = [];
   let scanner;
 
+  // pokaż wybór inwestycji od razu
+  document.getElementById("projectSelection").style.display = "block";
+
   // === Projekty ===
   function renderProjectList() {
     const list = document.getElementById("projectList");
@@ -110,7 +114,7 @@
   function deleteEntry(i){ let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); scans.splice(i,1); localStorage.setItem("scans_"+currentProject.name,JSON.stringify(scans)); loadScans(); }
   function clearData(){ localStorage.removeItem("scans_"+currentProject.name); document.querySelector("#dataTable tbody").innerHTML=""; updateSummary(); document.getElementById("raportDiv").innerHTML=""; }
   function updateSummary(){ let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); const sum=scans.reduce((a,r)=>a+r.qty,0); document.getElementById("summary").textContent="Suma ilości: "+sum; }
-  function exportCSV(){ let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); let csv="Kod QR,ID,Ilość,Moc (W),GPS,Czas\\n"; scans.forEach(r=>{csv+=`${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time}\\n`;}); const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`scans_${currentProject.name}.csv`; a.click(); }
+  function exportCSV(){ let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); let csv="Kod QR,ID,Ilość,Moc (W),GPS,Czas\n"; scans.forEach(r=>{csv+=`${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time}\n`;}); const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`scans_${currentProject.name}.csv`; a.click(); }
   function endDay(){ let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); if(scans.length===0)return; let archive=JSON.parse(localStorage.getItem("archive_"+currentProject.name)||"{}"); const today=new Date().toISOString().slice(0,10); archive[today]=scans; localStorage.setItem("archive_"+currentProject.name,JSON.stringify(archive)); clearData(); alert("Zapisano dzień: "+today); renderDayList(); }
   function renderDayList(){ const archive=JSON.parse(localStorage.getItem("archive_"+currentProject.name)||"{}"); const c=document.getElementById("dayList"); c.innerHTML="<h3>Zapisane dni:</h3>"; if(Object.keys(archive).length===0){c.innerHTML+="<p>Brak dni.</p>"; return;} const ul=document.createElement("ul"); let total=0; for(let d in archive){ const dayEntries=archive[d]; const daySum=dayEntries.reduce((s,r)=>s+r.qty,0); total+=daySum; const li=document.createElement("li"); li.textContent=`${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`; ul.appendChild(li);} c.appendChild(ul); document.getElementById("totalSum").textContent="Łączna suma ilości: "+total; }
   function showRaport(){ if(!currentProject)return; let scans=JSON.parse(localStorage.getItem("scans_"+currentProject.name)||"[]"); if(scans.length===0){document.getElementById("raportDiv").innerHTML="<p>Brak danych do raportu.</p>"; return;} let html="<h3>Raport montażu lamp:</h3><table><tr><th>Moc (W)</th><th>Planowano</th><th>Zamontowano</th><th>Pozostało</th></tr>"; let sumPlan=0,sumInst=0,sumRem=0; currentProject.lamps.forEach(lamp=>{ const inst=scans.filter(s=>s.power===lamp.power).reduce((a,b)=>a+b.qty,0); const rem=lamp.qty-inst; sumPlan+=lamp.qty; sumInst+=inst; sumRem+=rem; html+=`<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;}); html+=`<tr><td><b>SUMA</b></td><td><b>${sumPlan}</b></td><td><b>${sumInst}</b></td><td><b>${sumRem}</b></td></tr>`; html+="</table>"; document.getElementById("raportDiv").innerHTML=html; }
