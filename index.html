@@ -1,538 +1,473 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>SimplyApp – Inwestycje</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    :root{
-      --bg:#111; --panel:#1c1c1c; --panel2:#222; --border:#444; --text:#fff; --muted:#bbb; --acc:#4caf50;
-      --pad:0.75rem; --rad:10px;
-    }
-    *{box-sizing:border-box}
-    body{background:var(--bg); color:var(--text); font-family:sans-serif; margin:0; padding:2rem; text-align:center}
-    h1{margin:0 0 1rem 0}
-    h2,h3{margin:1rem 0 .5rem}
-    input,button{margin:.35rem; padding:.6rem .9rem; font-size:1rem; border-radius:8px; border:1px solid var(--border); background:#191919; color:var(--text)}
-    input::placeholder{color:#777}
-    button{background:#2a2a2a; cursor:pointer}
-    button:hover{background:#333}
-    .btn-primary{background:var(--acc); border-color:#3f9446}
-    .btn-danger{background:#b00020; border-color:#8a0019}
-    .btn-muted{background:#2a2a2a}
-    .row{max-width:1100px; margin:0 auto; text-align:left}
-    .card{background:var(--panel2); border:1px solid var(--border); border-radius:var(--rad); padding:var(--pad); margin:1rem 0}
-    table{width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border)}
-    th,td{border:1px solid var(--border); padding:.6rem .5rem; text-align:left}
-    th{background:#2a2a2a}
-    #preview{margin:.75rem auto 1rem auto; background:#000}
-    #summary{font-weight:bold}
-    #dayList ul, #finishedDays ul{list-style:none; padding:0; margin:0}
-    #dayList li, #finishedDays li{padding:.5rem; border-bottom:1px solid var(--border); cursor:pointer}
-    #dayList li:hover, #finishedDays li:hover{background:#1a1a1a}
-    #projectSelection, #app, #montazApp{display:none}
-
-    #progressBar{background:#2a2a2a; border-radius:8px; overflow:hidden; width:100%; height:26px; border:1px solid var(--border)}
-    #progressFill{height:100%; width:0%; background:var(--acc); text-align:center; color:#fff; line-height:26px; font-weight:bold}
-
-    .two-cols{display:grid; grid-template-columns:1fr 1fr; gap:1rem}
-    @media (max-width:900px){.two-cols{grid-template-columns:1fr}}
-    .mt1{margin-top:1rem}
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 2rem; }
+    input, button { margin: 0.5rem; padding: 0.5rem; font-size: 1rem; }
+    table { width: 100%; margin-top: 1rem; border-collapse: collapse; background: #222; }
+    td, th { border: 1px solid #444; padding: 0.5rem; }
+    img.thumb { width: 50px; cursor: pointer; }
+    #preview { margin-bottom: 1rem; }
+    #summary { margin-bottom: 1rem; font-weight: bold; }
+    #dayList ul, #finishedDays ul { list-style: none; padding-left: 0; }
+    #dayList li, #finishedDays li { padding: 0.3rem; border-bottom: 1px solid #333; cursor: pointer; }
+    #dayList li:hover, #finishedDays li:hover { background: #222; }
+    #projectSelection, #app, #montazApp { display: none; }
   </style>
 </head>
 <body>
   <h1>SimplyApp</h1>
 
   <!-- Wybór inwestycji -->
-  <div id="projectSelection" class="row">
-    <div class="card">
-      <h2>Wybierz inwestycję</h2>
-      <div id="projectList" class="mt1"></div>
-      <button class="btn-primary" onclick="showNewProjectForm()">➕ Dodaj nową inwestycję</button>
-
-      <div id="newProjectForm" class="card" style="display:none; text-align:center">
-        <h3>Nowa inwestycja</h3>
-        <input type="text" id="projectName" placeholder="Nazwa inwestycji" style="width:280px"><br>
-        <h3>Dodaj lampę</h3>
-        <input type="number" id="lampPower" placeholder="Moc (W)">
-        <input type="number" id="lampQty" placeholder="Ilość">
-        <button onclick="addLamp()">Dodaj lampę</button>
-        <div id="lampList" class="mt1"></div>
-        <div class="mt1">
-          <button class="btn-primary" onclick="saveProject()">Zapisz inwestycję</button>
-          <button class="btn-muted" onclick="cancelProject()">Anuluj</button>
-        </div>
-      </div>
+  <div id="projectSelection">
+    <h2>Wybierz inwestycję</h2>
+    <div id="projectList"></div>
+    <button onclick="showNewProjectForm()">➕ Dodaj nową inwestycję</button>
+    <div id="newProjectForm" style="margin-top:1rem; display:none;">
+      <input type="text" id="projectName" placeholder="Nazwa inwestycji"><br><br>
+      <h3>Dodaj lampę</h3>
+      <input type="number" id="lampPower" placeholder="Moc (W)">
+      <input type="number" id="lampQty" placeholder="Ilość">
+      <button onclick="addLamp()">Dodaj lampę</button>
+      <div id="lampList" style="margin-top:1rem;"></div>
+      <br><button onclick="saveProject()">Zapisz inwestycję</button>
+      <button onclick="cancelProject()">Anuluj</button>
     </div>
   </div>
 
   <!-- Panel inwestycji -->
-  <div id="app" class="row">
-    <div class="card">
-      <h2>Inwestycja: <span id="currentProjectName"></span></h2>
-      <button class="btn-primary" onclick="openMontaz()">🔧 Montaż</button>
+  <div id="app">
+    <h2>Inwestycja: <span id="currentProjectName"></span></h2>
+    <button onclick="openMontaz()">🔧 Montaż</button>
+    <div id="progressBar" style="background:#333; border-radius:6px; overflow:hidden; width:80%; margin:1rem auto;">
+      <div id="progressFill" style="background:#4caf50; width:0%; height:24px; line-height:24px; color:#fff;">0%</div>
     </div>
-
-    <div class="two-cols">
-      <div class="card">
-        <h3>Postęp inwestycji</h3>
-        <div id="progressBar"><div id="progressFill">0%</div></div>
-        <div id="lampPlan" class="mt1"></div>
-      </div>
-
-      <div class="card">
-        <h3>📅 Zakończone dni</h3>
-        <div id="finishedDays"></div>
-      </div>
-    </div>
-
-    <div class="card" style="text-align:center">
-      <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
-    </div>
+    <div id="lampPlan"></div>
+    <div id="finishedDays" style="margin-top:2rem; text-align:left;"></div>
+    <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
   <!-- Panel montażu -->
-  <div id="montazApp" class="row">
-    <div class="card" style="text-align:center">
-      <h2>Montaż – <span id="montazProjectName"></span></h2>
-      <div id="preview" style="width:320px;height:220px;"></div>
-      <button class="btn-primary" onclick="startScanner()">Skanuj kod QR</button><br>
-      <input type="text" id="qrResult" placeholder="Kod QR" readonly style="width:320px"><br>
-      <input type="text" id="idInput" placeholder="Wpisz ID">
-      <input type="number" id="qtyInput" placeholder="Ilość">
-      <input type="number" id="powerInput" placeholder="Moc (W)"><br>
-      <button class="btn-primary" onclick="saveEntry()">Zapisz</button>
-      <button onclick="exportCSV()">Eksportuj CSV</button>
-      <button class="btn-danger" onclick="clearData()">🗑️ Wyczyść dane</button>
-      <button onclick="endDay()">📅 Zakończ dzień</button>
-      <button onclick="showRaport()">📊 Raport montażu</button>
-    </div>
+  <div id="montazApp">
+    <h2>Montaż – <span id="montazProjectName"></span></h2>
+    <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
+    <button onclick="startScanner()">Skanuj kod QR</button><br>
+    <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+    <input type="text" id="idInput" placeholder="Wpisz ID"><br>
+    <input type="number" id="qtyInput" placeholder="Ilość"><br>
+    <input type="number" id="powerInput" placeholder="Moc (W)"><br>
+    <input type="file" id="photoInput" accept="image/*" capture="camera"><br>
+    <button onclick="saveEntry()">Zapisz</button>
+    <button onclick="exportCSV()">Eksportuj CSV</button>
+    <button onclick="exportZIP()">📦 Eksportuj ZIP</button>
+    <button onclick="clearData()">🗑️ Wyczyść dane</button>
+    <button onclick="endDay()">📅 Zakończ dzień</button>
+    <button onclick="showRaport()">📊 Raport montażu</button>
 
-    <div class="card">
-      <h2 id="summary">Suma ilości: 0</h2>
-      <table id="dataTable">
-        <thead>
-          <tr>
-            <th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th><th>Usuń</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <h2 id="summary">Suma ilości: 0</h2>
+    <table id="dataTable">
+      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th><th>Zdjęcie</th><th>Usuń</th></tr></thead>
+      <tbody></tbody>
+    </table>
 
-    <div class="two-cols">
-      <div class="card">
-        <h3>Zapisane dni (archiwum bieżącej inwestycji)</h3>
-        <div id="dayList"></div>
-        <div id="totalSum" class="mt1" style="font-weight:bold"></div>
-      </div>
-      <div class="card">
-        <h3>Raport montażu</h3>
-        <div id="raportDiv"></div>
-      </div>
-    </div>
-
-    <div class="card" style="text-align:center">
-      <button onclick="closeMontaz()">⬅️ Wróć do inwestycji</button>
-    </div>
+    <div id="dayList" style="margin-top: 2rem; text-align: left;"></div>
+    <div id="totalSum" style="margin-top: 1rem; font-weight: bold;"></div>
+    <div id="raportDiv" style="margin-top:2rem;"></div>
+    <button onclick="closeMontaz()">⬅️ Wróć</button>
   </div>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
-    // ======= Stan aplikacji =======
-    let projects = JSON.parse(localStorage.getItem("projects") || "[]");
-    let currentProject = null;
-    let tempLamps = [];
-    let scanner = null;
+  // ===== INICJALIZACJA =====
+  let projects = JSON.parse(localStorage.getItem("projects") || "[]");
+  let currentProject = null;
+  let tempLamps = [];
+  let scanner;
+  let photos = JSON.parse(localStorage.getItem("photos") || "{}");
 
-    // pokaż wybór inwestycji od razu
-    document.getElementById("projectSelection").style.display = "block";
+  document.getElementById("projectSelection").style.display = "block";
+
+  // ===== PROJEKTY =====
+  function renderProjectList() {
+    const list = document.getElementById("projectList");
+    if (projects.length === 0) {
+      list.innerHTML = "<p>Brak inwestycji.</p>";
+      return;
+    }
+    let html = "<ul style='list-style:none; padding:0'>";
+    projects.forEach((proj, i) => {
+      html += `<li><button onclick="selectProject(${i})">${proj.name}</button></li>`;
+    });
+    html += "</ul>";
+    list.innerHTML = html;
+  }
+
+  function showNewProjectForm() {
+    tempLamps = [];
+    updateLampList();
+    document.getElementById("newProjectForm").style.display = "block";
+  }
+
+  function addLamp() {
+    const p = parseInt(document.getElementById("lampPower").value);
+    const q = parseInt(document.getElementById("lampQty").value);
+    if (!p || !q) return;
+    tempLamps.push({ power: p, qty: q });
+    document.getElementById("lampPower").value = "";
+    document.getElementById("lampQty").value = "";
+    updateLampList();
+  }
+
+  function removeLamp(i) {
+    tempLamps.splice(i, 1);
+    updateLampList();
+  }
+
+  function updateLampList() {
+    const c = document.getElementById("lampList");
+    if (tempLamps.length === 0) {
+      c.innerHTML = "<p>Brak lamp.</p>";
+      return;
+    }
+    let h = "<table><tr><th>Moc</th><th>Ilość</th><th>Usuń</th></tr>";
+    tempLamps.forEach((l, i) => {
+      h += `<tr><td>${l.power}</td><td>${l.qty}</td><td><button onclick="removeLamp(${i})">🗑️</button></td></tr>`;
+    });
+    h += "</table>";
+    c.innerHTML = h;
+  }
+
+  function saveProject() {
+    const n = document.getElementById("projectName").value.trim();
+    if (!n) return;
+    if (tempLamps.length === 0) return;
+    projects.push({ name: n, lamps: tempLamps });
+    localStorage.setItem("projects", JSON.stringify(projects));
+    document.getElementById("projectName").value = "";
+    tempLamps = [];
+    updateLampList();
+    document.getElementById("newProjectForm").style.display = "none";
     renderProjectList();
+  }
 
-    // ======= Projekty (CRUD) =======
-    function renderProjectList(){
-      const list = document.getElementById("projectList");
-      if (!projects.length){
-        list.innerHTML = "<p class='muted'>Brak inwestycji. Dodaj pierwszą.</p>";
-        return;
-      }
-      let html = "<table><thead><tr><th>Nazwa</th><th>Plan (szt.)</th><th>Akcja</th></tr></thead><tbody>";
-      projects.forEach((p,i)=>{
-        const totalPlan = (p.lamps||[]).reduce((a,b)=>a+(b.qty||0),0);
-        html += `<tr>
-          <td>${p.name}</td>
-          <td>${totalPlan}</td>
-          <td><button class="btn-primary" onclick="selectProject(${i})">Wybierz</button></td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      list.innerHTML = html;
-    }
+  function cancelProject() {
+    document.getElementById("newProjectForm").style.display = "none";
+    tempLamps = [];
+    updateLampList();
+  }
 
-    function showNewProjectForm(){
-      tempLamps = [];
-      updateLampList();
-      document.getElementById("newProjectForm").style.display = "block";
-    }
-    function addLamp(){
-      const power = parseInt(document.getElementById("lampPower").value);
-      const qty   = parseInt(document.getElementById("lampQty").value);
-      if (!power || !qty){ alert("Podaj poprawnie moc i ilość."); return; }
-      tempLamps.push({ power, qty });
-      document.getElementById("lampPower").value = "";
-      document.getElementById("lampQty").value = "";
-      updateLampList();
-    }
-    function removeLamp(i){
-      tempLamps.splice(i,1);
-      updateLampList();
-    }
-    function updateLampList(){
-      const c = document.getElementById("lampList");
-      if (!tempLamps.length){ c.innerHTML = "<p class='muted'>Brak lamp.</p>"; return; }
-      let h = "<table><thead><tr><th>Moc (W)</th><th>Ilość</th><th>Usuń</th></tr></thead><tbody>";
-      tempLamps.forEach((l,i)=>{
-        h += `<tr><td>${l.power}</td><td>${l.qty}</td><td><button onclick="removeLamp(${i})">🗑️</button></td></tr>`;
-      });
-      h += "</tbody></table>";
-      c.innerHTML = h;
-    }
-    function saveProject(){
-      const name = (document.getElementById("projectName").value || "").trim();
-      if (!name){ alert("Podaj nazwę inwestycji."); return; }
-      if (!tempLamps.length){ alert("Dodaj przynajmniej jedną lampę."); return; }
-      projects.push({ name, lamps: tempLamps });
-      localStorage.setItem("projects", JSON.stringify(projects));
-      document.getElementById("projectName").value = "";
-      tempLamps = [];
-      updateLampList();
-      document.getElementById("newProjectForm").style.display = "none";
-      renderProjectList();
-    }
-    function cancelProject(){
-      document.getElementById("newProjectForm").style.display = "none";
-      tempLamps = [];
-      updateLampList();
-    }
-    function selectProject(i){
-      currentProject = projects[i];
-      localStorage.setItem("currentProject", JSON.stringify(currentProject));
-      document.getElementById("projectSelection").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      document.getElementById("currentProjectName").textContent = currentProject.name;
-      renderLampPlan();
-      updateProgress();
-      renderFinishedDays();
-    }
-    function backToProjectSelection(){
-      currentProject = null;
-      document.getElementById("projectSelection").style.display = "block";
-      document.getElementById("app").style.display = "none";
-    }
+  function selectProject(i) {
+    currentProject = projects[i];
+    localStorage.setItem("currentProject", JSON.stringify(currentProject));
+    document.getElementById("projectSelection").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("currentProjectName").textContent = currentProject.name;
+    renderLampPlan();
+    updateProgress();
+    renderFinishedDays();
+  }
 
-    // ======= Panel inwestycji =======
-    function renderLampPlan(){
-      const c = document.getElementById("lampPlan");
-      if (!currentProject || !currentProject.lamps || !currentProject.lamps.length){
-        c.innerHTML = "<p class='muted'>Brak lamp w planie.</p>";
-        return;
-      }
-      const all = getAllScansMerged(); // archiwum + bieżące
-      let h = "<table><thead><tr><th>Moc (W)</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr></thead><tbody>";
-      currentProject.lamps.forEach(l=>{
-        const inst = all.filter(s=>Number(s.power)===Number(l.power)).reduce((a,b)=>a+(b.qty||0),0);
-        const rem  = Math.max(0, (l.qty||0) - inst);
-        h += `<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
-      });
-      h += "</tbody></table>";
-      c.innerHTML = h;
-    }
+  function backToProjectSelection() {
+    currentProject = null;
+    document.getElementById("projectSelection").style.display = "block";
+    document.getElementById("app").style.display = "none";
+  }
 
-    function updateProgress(){
-      if (!currentProject || !currentProject.lamps) return;
-      const all = getAllScansMerged(); // archiwum + bieżące
-      const totalPlanned   = currentProject.lamps.reduce((a,b)=>a+(b.qty||0),0);
-      const totalInstalled = all.reduce((a,b)=>a+(b.qty||0),0);
-      const percent = totalPlanned>0 ? Math.round((totalInstalled/totalPlanned)*100) : 0;
-      const bar = document.getElementById("progressFill");
-      bar.style.width = percent + "%";
-      bar.textContent = percent + "%";
-    }
+  function openMontaz() {
+    document.getElementById("app").style.display = "none";
+    document.getElementById("montazApp").style.display = "block";
+    document.getElementById("montazProjectName").textContent = currentProject.name;
+    loadScans();
+    renderDayList();
+  }
 
-    function renderFinishedDays(){
-      const c = document.getElementById("finishedDays");
-      if (!currentProject){ c.innerHTML=""; return; }
-      const archive = JSON.parse(localStorage.getItem("archive_"+currentProject.name) || "{}");
-      if (!Object.keys(archive).length){
-        c.innerHTML = "<p class='muted'>Brak zakończonych dni.</p>";
-        return;
-      }
-      let h = "<ul>";
-      Object.keys(archive).sort().forEach(date=>{
-        const rows = archive[date] || [];
-        const sum  = rows.reduce((a,b)=>a+(b.qty||0),0);
-        h += `<li onclick="showDayInProject('${date}')">${date} – ${rows.length} wpisów (Suma: ${sum})</li>`;
-      });
-      h += "</ul>";
-      c.innerHTML = h;
-    }
+  function closeMontaz() {
+    document.getElementById("montazApp").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    renderLampPlan();
+    updateProgress();
+    renderFinishedDays();
+  }
 
-    function showDayInProject(date){
-      const c = document.getElementById("finishedDays");
-      const archive = JSON.parse(localStorage.getItem("archive_"+currentProject.name) || "{}");
-      const rows = archive[date] || [];
-      if (!rows.length){ c.innerHTML = "<p class='muted'>Brak danych.</p>"; return; }
-      let h = `<h4>Dane z dnia ${date}</h4><table><thead><tr>
-                <th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th>
-               </tr></thead><tbody>`;
-      rows.forEach(r=>{
-        h += `<tr><td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power||""}</td><td>${r.gps}</td><td>${r.time}</td></tr>`;
-      });
-      h += "</tbody></table>";
-      h += `<div class="mt1" style="text-align:center">
-              <button onclick="renderFinishedDays()">⬅️ Wróć</button>
-              <button onclick="exportDayCSV('${date}')" class="btn-primary">📤 Eksportuj CSV</button>
-            </div>`;
-      c.innerHTML = h;
+  // ===== LAMPY I POSTĘP =====
+  function renderLampPlan() {
+    const c = document.getElementById("lampPlan");
+    if (!currentProject || !currentProject.lamps) {
+      c.innerHTML = "Brak lamp";
+      return;
     }
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    let allScans = [...scans];
+    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
 
-    function exportDayCSV(date){
-      const archive = JSON.parse(localStorage.getItem("archive_"+currentProject.name) || "{}");
-      const rows = archive[date] || [];
-      if (!rows.length){ alert("Brak wpisów dla wybranego dnia."); return; }
-      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas\n";
-      rows.forEach(r=>{
-        csv += `${sanitizeCSV(r.qr)},${sanitizeCSV(r.id)},${r.qty||0},${r.power||""},${sanitizeCSV(r.gps)},${sanitizeCSV(r.time)}\n`;
-      });
-      downloadCSV(csv, `${currentProject.name}_${date}.csv`);
-    }
+    let h = "<table><tr><th>Moc</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr>";
+    currentProject.lamps.forEach(l => {
+      const inst = allScans.filter(s => s.power === l.power).reduce((a, b) => a + b.qty, 0);
+      const rem = l.qty - inst;
+      h += `<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
+    });
+    h += "</table>";
+    c.innerHTML = h;
+  }
 
-    // ======= Panel montażu (skany) =======
-    function openMontaz(){
-      if (!currentProject){ alert("Wybierz inwestycję."); return; }
-      document.getElementById("app").style.display = "none";
-      document.getElementById("montazApp").style.display = "block";
-      document.getElementById("montazProjectName").textContent = currentProject.name;
-      loadScans();
-      renderDayList();
-      document.getElementById("raportDiv").innerHTML = "";
-    }
-    function closeMontaz(){
-      document.getElementById("montazApp").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      renderLampPlan();
-      updateProgress();
-      renderFinishedDays();
-    }
+  function updateProgress() {
+    if (!currentProject || !currentProject.lamps) return;
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    let allScans = [...scans];
+    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
 
-    function startScanner(){
-      if (typeof Html5Qrcode === "undefined"){
-        alert("Biblioteka skanera nie została załadowana.");
-        return;
-      }
-      if (!scanner){ scanner = new Html5Qrcode("preview"); }
-      const config = { fps:10, qrbox:250 };
-      scanner.start({ facingMode:"environment" }, config, (msg)=>{
+    const totalPlanned = currentProject.lamps.reduce((a, b) => a + b.qty, 0);
+    const totalInstalled = allScans.reduce((a, b) => a + b.qty, 0);
+    const percent = totalPlanned > 0 ? Math.round((totalInstalled / totalPlanned) * 100) : 0;
+    document.getElementById("progressFill").style.width = percent + "%";
+    document.getElementById("progressFill").textContent = percent + "%";
+  }
+
+  // ===== ZAKOŃCZONE DNI =====
+  function renderFinishedDays() {
+    if (!currentProject) return;
+    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    const c = document.getElementById("finishedDays");
+    c.innerHTML = "<h3>📅 Zakończone dni:</h3>";
+    if (Object.keys(archive).length === 0) {
+      c.innerHTML += "<p>Brak zakończonych dni.</p>";
+      return;
+    }
+    const ul = document.createElement("ul");
+    for (let d in archive) {
+      const dayEntries = archive[d];
+      const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
+      const li = document.createElement("li");
+      li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
+      li.onclick = () => showDayInProject(d);
+      ul.appendChild(li);
+    }
+    c.appendChild(ul);
+  }
+
+  function showDayInProject(date) {
+    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    let rows = archive[date];
+    if (!rows) return;
+    let html = `<h3>Dane z dnia ${date}</h3><table style='width:100%; border-collapse:collapse;'>
+      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc</th><th>GPS</th><th>Czas</th></tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr><td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    html += `<button onclick="renderFinishedDays()">⬅️ Wróć</button> 
+             <button onclick="exportDayCSV('${date}')">📤 Eksportuj CSV</button>`;
+    document.getElementById("finishedDays").innerHTML = html;
+  }
+
+  function exportDayCSV(date) {
+    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    let rows = archive[date];
+    if (!rows) return;
+    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas\\n";
+    rows.forEach(r => { csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time}\\n`; });
+    const blob = new Blob([csv], { type: "text/csv" });
+    saveAs(blob, `${currentProject.name}_${date}.csv`);
+  }
+  // ===== QR SKANER =====
+  function startScanner() {
+    if (!scanner) { scanner = new Html5Qrcode("preview"); }
+    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+      msg => {
         document.getElementById("qrResult").value = msg;
-        scanner.stop().then(()=>{
+        scanner.stop().then(() => {
           document.getElementById("preview").innerHTML = "";
           scanner = null;
-        }).catch(()=>{});
-      }).catch(err=>{ alert("Błąd uruchamiania kamery: " + err); });
-    }
-
-    function saveEntry(){
-      const qr    = document.getElementById("qrResult").value;
-      const id    = document.getElementById("idInput").value;
-      const qty   = parseInt(document.getElementById("qtyInput").value) || 0;
-      const power = parseInt(document.getElementById("powerInput").value) || 0;
-      if (!qr){ alert("Najpierw zeskanuj kod QR."); return; }
-      if (!navigator.geolocation){ alert("Twoja przeglądarka nie obsługuje geolokalizacji."); return; }
-
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const gps  = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-        const time = new Date().toLocaleString();
-        const row  = { qr, id, qty, power, gps, time };
-        const key  = "scans_" + currentProject.name;
-        let scans  = JSON.parse(localStorage.getItem(key) || "[]");
-        scans.push(row);
-        localStorage.setItem(key, JSON.stringify(scans));
-        addRow(row, scans.length - 1);
-        updateSummary();
-      }, err=>alert("Nie udało się pobrać lokalizacji: " + err.message),
-      { enableHighAccuracy:true, timeout:10000, maximumAge:0 });
-    }
-
-    function addRow(r, i){
-      const t = document.querySelector("#dataTable tbody");
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.qr}</td>
-        <td>${r.id}</td>
-        <td>${r.qty}</td>
-        <td>${r.power || ""}</td>
-        <td>${r.gps}</td>
-        <td>${r.time}</td>
-        <td><button onclick="deleteEntry(${i})">🗑️</button></td>
-      `;
-      t.appendChild(tr);
-    }
-
-    function loadScans(){
-      const t = document.querySelector("#dataTable tbody");
-      t.innerHTML = "";
-      const key = "scans_" + currentProject.name;
-      let scans = JSON.parse(localStorage.getItem(key) || "[]");
-      scans.forEach((r,i)=>addRow(r,i));
-      updateSummary();
-    }
-
-    function deleteEntry(i){
-      const key = "scans_" + currentProject.name;
-      let scans = JSON.parse(localStorage.getItem(key) || "[]");
-      scans.splice(i,1);
-      localStorage.setItem(key, JSON.stringify(scans));
-      loadScans();
-    }
-
-    function clearData(){
-      if (!currentProject) return;
-      localStorage.removeItem("scans_" + currentProject.name);
-      document.querySelector("#dataTable tbody").innerHTML = "";
-      updateSummary();
-      document.getElementById("raportDiv").innerHTML = "";
-    }
-
-    function updateSummary(){
-      const key = "scans_" + currentProject.name;
-      let scans = JSON.parse(localStorage.getItem(key) || "[]");
-      const sum = scans.reduce((a,r)=>a+(r.qty||0),0);
-      document.getElementById("summary").textContent = "Suma ilości: " + sum;
-    }
-
-    function exportCSV(){
-      const key = "scans_" + currentProject.name;
-      const scans = JSON.parse(localStorage.getItem(key) || "[]");
-      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas\n";
-      scans.forEach(r=>{
-        csv += `${sanitizeCSV(r.qr)},${sanitizeCSV(r.id)},${r.qty||0},${r.power||""},${sanitizeCSV(r.gps)},${sanitizeCSV(r.time)}\n`;
-      });
-      downloadCSV(csv, `scans_${currentProject.name}.csv`);
-    }
-
-    function endDay(){
-      const sKey = "scans_" + currentProject.name;
-      let scans  = JSON.parse(localStorage.getItem(sKey) || "[]");
-      if (!scans.length){ alert("Brak danych do zapisania."); return; }
-
-      const aKey = "archive_" + currentProject.name;
-      let archive = JSON.parse(localStorage.getItem(aKey) || "{}");
-      const today = new Date().toISOString().slice(0,10);
-      if (!archive[today]) archive[today] = [];
-      archive[today] = archive[today].concat(scans);
-      localStorage.setItem(aKey, JSON.stringify(archive));
-
-      clearData(); // czyści bieżący dzień
-      alert("Zapisano dzień: " + today);
-
-      renderDayList();      // w panelu montażu
-      renderLampPlan();     // panel inwestycji
-      updateProgress();     // panel inwestycji
-      renderFinishedDays(); // panel inwestycji
-    }
-
-    // ======= Archiwum – panel montażu =======
-    function renderDayList(){
-      const archive = JSON.parse(localStorage.getItem("archive_"+currentProject.name) || "{}");
-      const c = document.getElementById("dayList");
-      c.innerHTML = "<ul>";
-      if (!Object.keys(archive).length){
-        c.innerHTML += "<li class='muted'>Brak zapisanych dni.</li></ul>";
-        document.getElementById("totalSum").textContent = "";
-        return;
+        });
       }
-      let total = 0;
-      Object.keys(archive).sort().forEach(date=>{
-        const dayEntries = archive[date]||[];
-        const daySum = dayEntries.reduce((s,r)=>s+(r.qty||0),0);
-        total += daySum;
-        const li = document.createElement("li");
-        li.textContent = `${date} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
-        li.onclick = ()=> showDayMontaz(date);
-        c.querySelector("ul").appendChild(li);
-      });
-      document.getElementById("totalSum").textContent = "Łączna suma ilości: " + total;
-    }
+    ).catch(e => alert("Błąd kamery: " + e));
+  }
 
-    function showDayMontaz(date){
-      const archive = JSON.parse(localStorage.getItem("archive_"+currentProject.name) || "{}");
-      const rows = archive[date] || [];
-      if (!rows.length) return;
-      let tableHTML = `
-        <h4>Dane z dnia ${date}</h4>
-        <table><thead>
-          <tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th></tr>
-        </thead><tbody>`;
-      rows.forEach(r=>{
-        tableHTML += `<tr>
-          <td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power||""}</td><td>${r.gps}</td><td>${r.time}</td>
-        </tr>`;
-      });
-      tableHTML += "</tbody></table>";
-      document.getElementById("dayList").innerHTML = tableHTML + `<button class="mt1" onclick="renderDayList()">⬅️ Wróć do listy dni</button>`;
-    }
+  // ===== ZAPIS WEJŚCIA =====
+  function saveEntry() {
+    const qr = document.getElementById("qrResult").value;
+    const id = document.getElementById("idInput").value.trim();
+    const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+    const power = parseInt(document.getElementById("powerInput").value) || 0;
+    if (!qr || !id) return alert("Skan QR i ID wymagane");
 
-    // ======= Raport montażu – panel montażu =======
-    function showRaport(){
-      if (!currentProject) return;
-      const all = getAllScansMerged(); // archiwum + bieżące
-      if (!all.length){
-        document.getElementById("raportDiv").innerHTML = "<p class='muted'>Brak danych do raportu.</p>";
-        return;
+    const file = document.getElementById("photoInput").files[0];
+    const time = new Date().toLocaleString();
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        photos[id] = e.target.result;
+        localStorage.setItem("photos", JSON.stringify(photos));
+        finishSave(qr, id, qty, power, time);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      finishSave(qr, id, qty, power, time);
+    }
+  }
+
+  function finishSave(qr, id, qty, power, time) {
+    const gps = ""; // można dodać navigator.geolocation
+    const row = { qr, id, qty, power, gps, time, photo: id + ".jpg" };
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    scans.push(row);
+    localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+    addRow(row, scans.length - 1);
+    updateSummary();
+    renderLampPlan();
+    updateProgress();
+  }
+
+  function addRow(r, i) {
+    const t = document.querySelector("#dataTable tbody");
+    const tr = document.createElement("tr");
+    let imgHTML = "";
+    if (photos[r.id]) imgHTML = `<img src="${photos[r.id]}" class="thumb" onclick="showPhoto('${r.id}')">`;
+    tr.innerHTML = `<td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td><td>${imgHTML}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+    t.appendChild(tr);
+  }
+
+  function showPhoto(id) {
+    if (photos[id]) {
+      const w = window.open("");
+      w.document.write(`<img src="${photos[id]}" style="width:100%">`);
+    }
+  }
+
+  function loadScans() {
+    const t = document.querySelector("#dataTable tbody");
+    t.innerHTML = "";
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    scans.forEach((r, i) => addRow(r, i));
+    updateSummary();
+  }
+
+  function deleteEntry(i) {
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    scans.splice(i, 1);
+    localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+    loadScans();
+  }
+
+  function clearData() {
+    localStorage.removeItem("scans_" + currentProject.name);
+    document.querySelector("#dataTable tbody").innerHTML = "";
+    updateSummary();
+    document.getElementById("raportDiv").innerHTML = "";
+  }
+
+  // ===== PODSUMOWANIA =====
+  function updateSummary() {
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    const sum = scans.reduce((a, r) => a + r.qty, 0);
+    document.getElementById("summary").textContent = "Suma ilości: " + sum;
+  }
+
+  function exportCSV() {
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
+    scans.forEach(r => {
+      csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    saveAs(blob, "raport.csv");
+  }
+
+  async function exportZIP() {
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    let zip = new JSZip();
+    let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\\n";
+    scans.forEach(r => {
+      csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\\n`;
+      if (photos[r.id]) {
+        const base64 = photos[r.id].split(",")[1];
+        zip.file("images/" + r.photo, base64, { base64: true });
       }
-      let html = "<table><thead><tr><th>Moc (W)</th><th>Planowano</th><th>Zamontowano</th><th>Pozostało</th></tr></thead><tbody>";
-      let sumPlan=0, sumInst=0, sumRem=0;
-      (currentProject.lamps||[]).forEach(l=>{
-        const inst = all.filter(s=>Number(s.power)===Number(l.power)).reduce((a,b)=>a+(b.qty||0),0);
-        const rem = Math.max(0, (l.qty||0)-inst);
-        sumPlan += (l.qty||0);
-        sumInst += inst;
-        sumRem  += rem;
-        html += `<tr><td>${l.power}</td><td>${l.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
-      });
-      html += `<tr><td><b>SUMA</b></td><td><b>${sumPlan}</b></td><td><b>${sumInst}</b></td><td><b>${sumRem}</b></td></tr>`;
-      html += "</tbody></table>";
-      document.getElementById("raportDiv").innerHTML = html;
+    });
+    zip.file("raport.csv", csv);
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, "raport.zip");
+  }
+
+  // ===== ARCHIWUM =====
+  function endDay() {
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    if (scans.length === 0) return;
+    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    const today = new Date().toISOString().slice(0, 10);
+    if (!archive[today]) archive[today] = [];
+    archive[today] = archive[today].concat(scans);
+    localStorage.setItem("archive_" + currentProject.name, JSON.stringify(archive));
+    clearData();
+    alert("Zapisano dzień: " + today);
+    renderDayList();
+    renderLampPlan();
+    updateProgress();
+    renderFinishedDays();
+  }
+
+  function renderDayList() {
+    const archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    const c = document.getElementById("dayList");
+    c.innerHTML = "<h3>Zapisane dni:</h3>";
+    if (Object.keys(archive).length === 0) {
+      c.innerHTML += "<p>Brak dni.</p>";
+      return;
+    }
+    const ul = document.createElement("ul");
+    let total = 0;
+    for (let d in archive) {
+      const dayEntries = archive[d];
+      const daySum = dayEntries.reduce((s, r) => s + r.qty, 0);
+      total += daySum;
+      const li = document.createElement("li");
+      li.textContent = `${d} – ${dayEntries.length} wpisów (Suma: ${daySum})`;
+      ul.appendChild(li);
+    }
+    c.appendChild(ul);
+    document.getElementById("totalSum").textContent = "Łączna suma ilości: " + total;
+  }
+
+  // ===== RAPORT MONTAŻU =====
+  function showRaport() {
+    if (!currentProject) return;
+    let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+    let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+    let allScans = [...scans];
+    Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+    if (allScans.length === 0) {
+      document.getElementById("raportDiv").innerHTML = "<p>Brak danych do raportu.</p>";
+      return;
     }
 
-    // ======= Pomocnicze =======
-    function getAllScansMerged(){
-      if (!currentProject) return [];
-      const sKey = "scans_" + currentProject.name;
-      const aKey = "archive_" + currentProject.name;
-      const current = JSON.parse(localStorage.getItem(sKey) || "[]");
-      const archiveObj = JSON.parse(localStorage.getItem(aKey) || "{}");
-      let all = current.slice();
-      Object.values(archiveObj).forEach(dayArr=>{
-        (dayArr||[]).forEach(x=>all.push(x));
-      });
-      return all;
-    }
+    let html = "<h3>Raport montażu lamp:</h3><table><tr><th>Moc (W)</th><th>Planowano</th><th>Zamontowano</th><th>Pozostało</th></tr>";
+    let sumPlan = 0, sumInst = 0, sumRem = 0;
 
-    function sanitizeCSV(v){
-      if (v===undefined || v===null) return "";
-      const s = String(v).replace(/"/g,'""');
-      return /[,\"\n]/.test(s) ? `"${s}"` : s;
-    }
-    function downloadCSV(csv, filename){
-      const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
-  </script>
+    currentProject.lamps.forEach(lamp => {
+      const inst = allScans.filter(s => s.power === lamp.power).reduce((a, b) => a + b.qty, 0);
+      const rem = lamp.qty - inst;
+      sumPlan += lamp.qty;
+      sumInst += inst;
+      sumRem += rem;
+      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${inst}</td><td>${rem}</td></tr>`;
+    });
+
+    html += `<tr><td><b>SUMA</b></td><td><b>${sumPlan}</b></td><td><b>${sumInst}</b></td><td><b>${sumRem}</b></td></tr>`;
+    html += "</table>";
+    document.getElementById("raportDiv").innerHTML = html;
+  }
+
+  // ===== START =====
+  renderProjectList();
+</script>
 </body>
 </html>
