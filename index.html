@@ -7,10 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: sans-serif; background: #f9f9f9; color: #111; text-align: center; padding: 2rem; }
-    button { margin: 0.3rem; padding: 0.5rem 1rem; font-size: 1rem; }
-    input { margin: 0.3rem; padding: 0.5rem; font-size: 1rem; width: 200px; }
+    button { margin: 0.3rem; padding: 0.6rem 1.2rem; font-size: 1rem; }
     table { margin: 1rem auto; border-collapse: collapse; background: #fff; }
     th, td { padding: 0.5rem 1rem; border: 1px solid #ccc; }
+    #progressBar { width: 80%; height: 24px; background: #ddd; margin: 1rem auto; border-radius: 6px; overflow: hidden; }
+    #progressFill { height: 100%; width: 0%; background: #4caf50; text-align: center; color: white; line-height: 24px; }
     #app { display: none; }
   </style>
 </head>
@@ -38,7 +39,15 @@
 
   <div id="app">
     <h2>Aktywna inwestycja: <span id="currentProjectName"></span></h2>
-    <p>📦 Tu będzie Twój panel QR, zapis danych, eksport itd.</p>
+    <button onclick="goToMontaz()">🔧 Montaż</button>
+
+    <div id="progressBar">
+      <div id="progressFill">0%</div>
+    </div>
+
+    <h3>Plan lamp</h3>
+    <div id="lampPlan"></div>
+
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
@@ -46,6 +55,7 @@
   let projects = JSON.parse(localStorage.getItem("projects") || "[]");
   let currentProject = null;
   let tempLamps = [];
+  let scans = JSON.parse(localStorage.getItem("scans") || "[]");
 
   function renderProjectList() {
     const list = document.getElementById("projectList");
@@ -121,6 +131,8 @@
     document.getElementById("projectSelection").style.display = "none";
     document.getElementById("app").style.display = "block";
     document.getElementById("currentProjectName").textContent = currentProject.name;
+    renderLampPlan();
+    updateProgress();
   }
 
   function backToProjectSelection() {
@@ -128,6 +140,36 @@
     localStorage.removeItem("currentProject");
     document.getElementById("projectSelection").style.display = "block";
     document.getElementById("app").style.display = "none";
+  }
+
+  function goToMontaz() {
+    alert("Tu będzie panel QR i montaż dla inwestycji: " + currentProject.name);
+  }
+
+  function renderLampPlan() {
+    const container = document.getElementById("lampPlan");
+    if (!currentProject || !currentProject.lamps || currentProject.lamps.length === 0) {
+      container.innerHTML = "<p>Brak lamp w tej inwestycji.</p>";
+      return;
+    }
+    let html = "<table><thead><tr><th>Moc (W)</th><th>Plan</th><th>Zamontowano</th><th>Pozostało</th></tr></thead><tbody>";
+    currentProject.lamps.forEach(lamp => {
+      const installed = scans.filter(s => s.investment === currentProject.name && s.power === lamp.power).reduce((a,b) => a+b.qty, 0);
+      const remaining = lamp.qty - installed;
+      html += `<tr><td>${lamp.power}</td><td>${lamp.qty}</td><td>${installed}</td><td>${remaining}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  }
+
+  function updateProgress() {
+    if (!currentProject || !currentProject.lamps) return;
+    const totalPlanned = currentProject.lamps.reduce((a,b) => a+b.qty, 0);
+    const totalInstalled = scans.filter(s => s.investment === currentProject.name).reduce((a,b) => a+b.qty, 0);
+    const percent = totalPlanned > 0 ? Math.round((totalInstalled / totalPlanned) * 100) : 0;
+    const bar = document.getElementById("progressFill");
+    bar.style.width = percent + "%";
+    bar.textContent = percent + "%";
   }
 
   renderProjectList();
