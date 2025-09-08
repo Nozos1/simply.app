@@ -297,40 +297,48 @@
 
     // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
     function saveEntry() {
-      const qr = document.getElementById("qrResult").value;
-      const id = document.getElementById("idInput").value.trim();
-      const qty = parseInt(document.getElementById("qtyInput").value) || 0;
-      const power = parseInt(document.getElementById("powerInput").value) || 0;
-      if (!qr || !id) return alert("Skan QR i ID wymagane");
+  const qr = document.getElementById("qrResult").value;
+  const id = document.getElementById("idInput").value.trim();
+  const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+  const power = parseInt(document.getElementById("powerInput").value) || 0;
+  if (!qr || !id) return alert("Skan QR i ID wymagane");
 
-      const file = document.getElementById("photoInput").files[0];
-      const time = new Date().toLocaleString();
+  const file = document.getElementById("photoInput").files[0];
+  const time = new Date().toLocaleString();
 
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          photos[id] = e.target.result;
-          localStorage.setItem("photos", JSON.stringify(photos));
-          finishSave(qr, id, qty, power, time);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        finishSave(qr, id, qty, power, time);
-      }
-    }
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      photos[id] = e.target.result;
+      localStorage.setItem("photos", JSON.stringify(photos));
+      finishSave(qr, id, qty, power, time, file.name); // prawdziwa nazwa zdjęcia
+    };
+    reader.readAsDataURL(file);
+  } else {
+    finishSave(qr, id, qty, power, time, ""); // brak zdjęcia
+  }
+}
 
-    function finishSave(qr, id, qty, power, time) {
-      const gps = ""; // można dodać navigator.geolocation
-      const row = { qr, id, qty, power, gps, time, photo: id + ".jpg" };
-      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-      scans.push(row);
-      localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
-      addRow(row, scans.length - 1);
-      updateSummary();
-      renderLampPlan();
-      updateProgress();
-      renderPhotoGallery();
-    }
+function finishSave(qr, id, qty, power, time, photoName) {
+  const gps = "";
+  const row = { qr, id, qty, power, gps, time, photo: photoName };
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+  scans.push(row);
+  localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+  addRow(row, scans.length - 1);
+  updateSummary();
+  renderLampPlan();
+  updateProgress();
+  renderPhotoGallery();
+
+  // wyczyść formularz
+  document.getElementById("qrResult").value = "";
+  document.getElementById("idInput").value = "";
+  document.getElementById("qtyInput").value = "";
+  document.getElementById("powerInput").value = "";
+  document.getElementById("photoInput").value = "";
+}
+
 
     function addRow(r, i) {
       const t = document.querySelector("#dataTable tbody");
