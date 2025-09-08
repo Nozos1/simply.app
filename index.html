@@ -67,6 +67,9 @@
     <button onclick="clearData()">🗑️ Wyczyść dane</button>
     <button onclick="endDay()">📅 Zakończ dzień</button>
     <button onclick="showRaport()">📊 Raport montażu</button>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+<button onclick="document.getElementById('photoInput').click()">📸 Zrób zdjęcie</button>
+<div id="photoPreview" style="margin: 10px 0;"></div>
 
     <h2 id="summary">Suma ilości: 0</h2>
     <table id="dataTable">
@@ -295,59 +298,130 @@
       ).catch(e => alert("Błąd kamery: " + e));
     }
 
-    // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
-    function saveEntry() {
-  const qr = document.getElementById("qrResult").value;
-  const id = document.getElementById("idInput").value.trim();
-  const qty = parseInt(document.getElementById("qtyInput").value) || 0;
-  const power = parseInt(document.getElementById("powerInput").value) || 0;
+// ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
+let photos = JSON.parse(localStorage.getItem("photos")) || {};
 
-  if (!qr || !id) {
-    alert("Skan QR i ID wymagane");
-    return;
-  }
+function saveEntry() {
+    const qr = document.getElementById("qrResult").value;
+    const id = document.getElementById("idInput").value.trim();
+    const qty = parseInt(document.getElementById("qtyInput").value) || 0;
+    const power = parseInt(document.getElementById("powerInput").value) || 0;
 
-  const file = document.getElementById("photoInput").files[0];
-  const time = new Date().toLocaleString();
+    if (!qr || !id) {
+        alert("Skan QR i ID wymagane");
+        return;
+    }
 
-  // jeśli jest zdjęcie → wczytaj base64
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      photos[id] = e.target.result; // zapis do localStorage
-      localStorage.setItem("photos", JSON.stringify(photos));
-      finishSave(qr, id, qty, power, time, id + ".jpg");
-    };
-    reader.readAsDataURL(file);
-  } else {
-    // brak zdjęcia → zapis tylko danych
-    finishSave(qr, id, qty, power, time, "");
-  }
+    const file = document.getElementById("photoInput").files[0];
+    
+    // Najpierw pobierz geolokalizację, potem zdjęcie
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const gps = `${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`;
+                processWithGeolocation(qr, id, qty, power, gps, file);
+            },
+            error => {
+                console.warn("Geolokalizacja niedostępna:", error);
+                processWithGeolocation(qr, id, qty, power, "Brak GPS", file);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    } else {
+        processWithGeolocation(qr, id, qty, power, "Brak GPS", file);
+    }
 }
 
-function finishSave(qr, id, qty, power, time, photoName) {
-  const gps = ""; // można dodać geolokalizację
-  const row = { qr, id, qty, power, gps, time, photo: photoName };
+function processWithGeolocation(qr, id, qty, power, gps, file) {
+    const time = new Date().toLocaleString();
 
-  // wczytaj dane z aktualnej inwestycji
-  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-  scans.push(row);
-  localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            photos[id] = e.target.result;
+            localStorage.setItem("photos", JSON.stringify(photos));
+            finishSave(qr, id, qty, power, gps, time, id + ".jpg");
+        };
+        reader.onerror = function() {
+            console.error("Błąd wczytywania zdjęcia");
+            finishSave(qr, id, qty, power, gps, time, "");
+        };
+        reader.readAsDataURL(file);
+    } else {
+        finishSave(qr, id, qty, power, gps, time, "");
+    }
+}
 
-  addRow(row, scans.length - 1);
-  updateSummary();
-  renderLampPlan();
-  updateProgress();
-  if (typeof renderPhotoGallery === "function") {
-    renderPhotoGallery();
-  }
+function finishSave(qr, id, qty, power, gps, time, photoName) {
+    try {
+        const row = { 
+            qr, 
+            id, 
+            qty, 
+            power, 
+            gps, 
+            time, 
+            photo: photoName 
+        };
 
-  // wyczyść formularz po zapisie
-  document.getElementById("qrResult").value = "";
-  document.getElementById("idInput").value = "";
-  document.getElementById("qtyInput").value = "";
-  document.getElementById("powerInput").value = "";
-  document.getElementById("photoInput").value = "";
+        // Pobierz aktualną listę skanów (lub utwórz nową)
+        let scans = JSON.parse(localStorage.getItem("scans") || "[]");
+        scans.push(row);
+        localStorage.setItem("scans", JSON.stringify(scans));
+
+        // Dodaj wiersz do tabeli (jeśli funkcja exists)
+        if (typeof addRow === "function") {
+            addRow(row, scans.length - 1);
+        }
+
+        // Aktualizuj podsumowanie (jeśli funkcja exists)
+        if (typeof updateSummary === "function") {
+            updateSummary();
+        }
+
+        // Wyczyść formularz
+        document.getElementById("qrResult").value = "";
+        document.getElementById("idInput").value = "";
+        document.getElementById("qtyInput").value = "";
+        document.getElementById("powerInput").value = "";
+        document.getElementById("photoInput").value = "";
+
+        console.log("Zapisano:", row);
+        alert("Dane zapisane pomyślnie!");
+
+    } catch (error) {
+        console.error("Błąd zapisu:", error);
+        alert("Błąd podczas zapisywania danych");
+    }
+}
+
+// Prosta funkcja addRow jeśli nie istnieje
+function addRow(row, index) {
+    const table = document.querySelector("#dataTable tbody");
+    if (!table) return;
+    
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td>${row.qr}</td>
+        <td>${row.id}</td>
+        <td>${row.qty}</td>
+        <td>${row.power || ""}</td>
+        <td>${row.gps}</td>
+        <td>${row.time}</td>
+        <td>${row.photo ? "✅" : "❌"}</td>
+        <td><button onclick="deleteEntry(${index})">🗑️</button></td>
+    `;
+    table.appendChild(tr);
+}
+
+// Prosta funkcja updateSummary jeśli nie istnieje
+function updateSummary() {
+    const scans = JSON.parse(localStorage.getItem("scans") || "[]");
+    const total = scans.reduce((sum, row) => sum + row.qty, 0);
+    const summaryEl = document.getElementById("summary");
+    if (summaryEl) {
+        summaryEl.textContent = `Suma ilości: ${total}`;
+    }
 }
 
 
@@ -520,6 +594,36 @@ function finishSave(qr, id, qty, power, time, photoName) {
         c.innerHTML += html;
       }
     }
+
+    // Podgląd zdjęcia przed wysłaniem
+document.getElementById('photoInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photoPreview').innerHTML = `
+                <img src="${e.target.result}" style="max-width: 200px; max-height: 150px;">
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Funkcja usuwania wpisu
+function deleteEntry(index) {
+    if (confirm("Czy na pewno chcesz usunąć ten wpis?")) {
+        let scans = JSON.parse(localStorage.getItem("scans") || "[]");
+        scans.splice(index, 1);
+        localStorage.setItem("scans", JSON.stringify(scans));
+        
+        // Odśwież widok
+        const table = document.querySelector("#dataTable tbody");
+        if (table) table.innerHTML = "";
+        
+        scans.forEach((row, i) => addRow(row, i));
+        updateSummary();
+    }
+}
 
     // ===== START =====
     renderProjectList();
