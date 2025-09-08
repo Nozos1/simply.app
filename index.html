@@ -51,34 +51,40 @@
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
-  <!-- Panel montażu -->
-  <div id="montazApp">
-    <h2>Montaż – <span id="montazProjectName"></span></h2>
-    <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
-    <button onclick="startScanner()">Skanuj kod QR</button><br>
-    <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
-    <input type="text" id="idInput" placeholder="Wpisz ID"><br>
-    <input type="number" id="qtyInput" placeholder="Ilość"><br>
-    <input type="number" id="powerInput" placeholder="Moc (W)"><br>
-    <input type="file" id="photoInput" accept="image/*" capture="camera"><br>
-    <button id="saveBtn">Zapisz</button>
-    <button onclick="exportCSV()">Eksportuj CSV</button>
-    <button onclick="exportZIP()">📦 Eksportuj ZIP</button>
-    <button onclick="clearData()">🗑️ Wyczyść dane</button>
-    <button onclick="endDay()">📅 Zakończ dzień</button>
-    <button onclick="showRaport()">📊 Raport montażu</button>
+<!-- Panel montażu -->
+<div id="montazApp">
+  <h2>Montaż – <span id="montazProjectName"></span></h2>
+  <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
+  <button onclick="startScanner()">Skanuj kod QR</button><br>
+  <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+  <input type="text" id="idInput" placeholder="Wpisz ID"><br>
+  <input type="number" id="qtyInput" placeholder="Ilość"><br>
+  <input type="number" id="powerInput" placeholder="Moc (W)"><br>
+  <input type="file" id="photoInput" accept="image/*" capture="camera"><br>
+  <button id="saveBtn">Zapisz</button>
+  <button onclick="exportCSV()">Eksportuj CSV</button>
+  <button onclick="exportZIP()">📦 Eksportuj ZIP</button>
+  <button onclick="clearData()">🗑️ Wyczyść dane</button>
+  <button onclick="endDay()">📅 Zakończ dzień</button>
+  <button onclick="showRaport()">📊 Raport montażu</button>
 
-    <h2 id="summary">Suma ilości: 0</h2>
-    <table id="dataTable">
-      <thead><tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th><th>GPS</th><th>Czas</th><th>Zdjęcie</th><th>Usuń</th></tr></thead>
-      <tbody></tbody>
-    </table>
+  <h2 id="summary">Suma ilości: 0</h2>
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc (W)</th>
+        <th>GPS</th><th>Czas</th><th>Zdjęcie</th><th>Usuń</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <div id="dayList" style="margin-top: 2rem; text-align: left;"></div>
-    <div id="totalSum" style="margin-top: 1rem; font-weight: bold;"></div>
-    <div id="raportDiv" style="margin-top:2rem;"></div>
-    <button onclick="closeMontaz()">⬅️ Wróć</button>
-  </div>
+  <div id="dayList" style="margin-top: 2rem; text-align: left;"></div>
+  <div id="totalSum" style="margin-top: 1rem; font-weight: bold;"></div>
+  <div id="raportDiv" style="margin-top:2rem;"></div>
+  <button onclick="closeMontaz()">⬅️ Wróć</button>
+</div>
+
 
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
@@ -279,24 +285,24 @@
       const blob = new Blob([csv], { type: "text/csv" });
       saveAs(blob, `${currentProject.name}_${date}.csv`);
     }
-    // ===== QR SKANER =====
-    function startScanner() {
-      if (!scanner) { scanner = new Html5Qrcode("preview"); }
-      scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        msg => {
-          document.getElementById("qrResult").value = msg;
-          scanner.stop().then(() => {
-            document.getElementById("preview").innerHTML = "";
-            scanner = null;
-          });
-        }
-      ).catch(e => alert("Błąd kamery: " + e));
+// ===== QR SKANER =====
+function startScanner() {
+  if (!scanner) { scanner = new Html5Qrcode("preview"); }
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    msg => {
+      document.getElementById("qrResult").value = msg;
+      scanner.stop().then(() => {
+        document.getElementById("preview").innerHTML = "";
+        scanner = null;
+      });
     }
+  ).catch(e => alert("Błąd kamery: " + e));
+}
 
-    // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
-    function saveEntry() {
+// ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
+function saveEntry() {
   const qr = document.getElementById("qrResult").value;
   const id = document.getElementById("idInput").value.trim();
   const qty = parseInt(document.getElementById("qtyInput").value) || 0;
@@ -311,16 +317,16 @@
     reader.onload = function(e) {
       photos[id] = e.target.result;
       localStorage.setItem("photos", JSON.stringify(photos));
-      finishSave(qr, id, qty, power, time, file.name); // prawdziwa nazwa zdjęcia
+      finishSave(qr, id, qty, power, time, file.name);
     };
     reader.readAsDataURL(file);
   } else {
-    finishSave(qr, id, qty, power, time, ""); // brak zdjęcia
+    finishSave(qr, id, qty, power, time, "");
   }
 }
 
 function finishSave(qr, id, qty, power, time, photoName) {
-  const gps = "";
+  const gps = ""; // można dodać navigator.geolocation
   const row = { qr, id, qty, power, gps, time, photo: photoName };
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
   scans.push(row);
@@ -331,13 +337,42 @@ function finishSave(qr, id, qty, power, time, photoName) {
   updateProgress();
   renderPhotoGallery();
 
-  // wyczyść formularz
+  // wyczyść formularz po zapisie
   document.getElementById("qrResult").value = "";
   document.getElementById("idInput").value = "";
   document.getElementById("qtyInput").value = "";
   document.getElementById("powerInput").value = "";
   document.getElementById("photoInput").value = "";
 }
+
+// ===== RENDER TABELI =====
+function addRow(r, i) {
+  const t = document.querySelector("#dataTable tbody");
+  const tr = document.createElement("tr");
+  let imgHTML = "";
+  if (photos[r.id]) imgHTML = `<img src="${photos[r.id]}" class="thumb" onclick="showPhoto('${r.id}')">`;
+  tr.innerHTML = `<td>${r.qr}</td><td>${r.id}</td><td>${r.qty}</td><td>${r.power}</td><td>${r.gps}</td><td>${r.time}</td><td>${imgHTML}</td><td><button onclick="deleteEntry(${i})">🗑️</button></td>`;
+  t.appendChild(tr);
+}
+
+function showPhoto(id) {
+  if (photos[id]) {
+    const w = window.open("");
+    w.document.write(`<img src="${photos[id]}" style="width:100%">`);
+  }
+}
+
+function loadScans() {
+  const t = document.querySelector("#dataTable tbody");
+  t.innerHTML = "";
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+  scans.forEach((r, i) => addRow(r, i));
+  updateSummary();
+}
+
+// podpinamy przycisk
+document.getElementById("saveBtn").addEventListener("click", saveEntry);
+
 
 
     function addRow(r, i) {
