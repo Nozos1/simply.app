@@ -297,7 +297,7 @@
     }
 
     // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
-    function saveEntry() {
+function saveEntry() {
   const qr = document.getElementById("qrResult").value;
   const id = document.getElementById("idInput").value.trim();
   const qty = parseInt(document.getElementById("qtyInput").value) || 0;
@@ -307,31 +307,44 @@
   const file = document.getElementById("photoInput").files[0];
   const time = new Date().toLocaleString();
 
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-      try {
-        // zapis base64 zdjęcia do photos
+  // Funkcja pomocnicza – kończy zapis
+  function doFinish(gps) {
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
         photos[id] = e.target.result;
         localStorage.setItem("photos", JSON.stringify(photos));
-        finishSave(qr, id, qty, power, time, id + ".jpg");
-      } catch (err) {
-        alert("Błąd przy zapisie zdjęcia: " + err.message);
-        finishSave(qr, id, qty, power, time, "");
-      }
-    };
+        finishSave(qr, id, qty, power, time, id + ".jpg", gps);
+      };
+      reader.onerror = function() {
+        alert("Błąd odczytu zdjęcia.");
+        finishSave(qr, id, qty, power, time, "", gps);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      finishSave(qr, id, qty, power, time, "", gps);
+    }
+  }
 
-    reader.onerror = function() {
-      alert("Nie udało się wczytać zdjęcia.");
-      finishSave(qr, id, qty, power, time, "");
-    };
-
-    reader.readAsDataURL(file);
+  // Pobierz GPS
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const gps = pos.coords.latitude.toFixed(5) + "," + pos.coords.longitude.toFixed(5);
+        doFinish(gps);
+      },
+      err => {
+        console.warn("Błąd geolokalizacji:", err.message);
+        doFinish("");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   } else {
-    finishSave(qr, id, qty, power, time, "");
+    alert("Twoja przeglądarka nie obsługuje geolokalizacji.");
+    doFinish("");
   }
 }
+
 
 
 function finishSave(qr, id, qty, power, time, photoName, gps) {
