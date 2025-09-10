@@ -307,22 +307,27 @@ function saveEntry() {
   const file = document.getElementById("photoInput").files[0];
   const time = new Date().toLocaleString();
 
-  // Funkcja pomocnicza – kończy zapis
+  // Funkcja pomocnicza – kończy zapis z GPS
   function doFinish(gps) {
     if (file) {
       const reader = new FileReader();
       reader.onload = function(e) {
-        photos[id] = e.target.result;
-        localStorage.setItem("photos", JSON.stringify(photos));
-        finishSave(qr, id, qty, power, time, id + ".jpg", gps);
+        try {
+          photos[id] = e.target.result;
+          localStorage.setItem("photos", JSON.stringify(photos));
+          finishSave(qr, id, qty, power, time, id + ".jpg", gps); // <-- przekazujemy GPS
+        } catch (err) {
+          alert("Błąd przy zapisie zdjęcia: " + err.message);
+          finishSave(qr, id, qty, power, time, "", gps);
+        }
       };
       reader.onerror = function() {
-        alert("Błąd odczytu zdjęcia.");
+        alert("Nie udało się wczytać zdjęcia.");
         finishSave(qr, id, qty, power, time, "", gps);
       };
       reader.readAsDataURL(file);
     } else {
-      finishSave(qr, id, qty, power, time, "", gps);
+      finishSave(qr, id, qty, power, time, "", gps); // <-- przekazujemy GPS
     }
   }
 
@@ -335,7 +340,7 @@ function saveEntry() {
       },
       err => {
         console.warn("Błąd geolokalizacji:", err.message);
-        doFinish("");
+        doFinish(""); // brak GPS, ale wpis i tak się zapisze
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -344,6 +349,7 @@ function saveEntry() {
     doFinish("");
   }
 }
+
 
 
 
@@ -365,6 +371,7 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
   document.getElementById("powerInput").value = "";
   document.getElementById("photoInput").value = "";
 }
+
 
 
     function addRow(r, i) {
