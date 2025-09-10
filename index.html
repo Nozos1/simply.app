@@ -334,24 +334,25 @@
 }
 
 
-    function finishSave(qr, id, qty, power, time, photoName) {
-      const gps = "";
-      const row = { qr, id, qty, power, gps, time, photo: photoName };
-      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-      scans.push(row);
-      localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
-      addRow(row, scans.length - 1);
-      updateSummary();
-      renderLampPlan();
-      updateProgress();
-      renderPhotoGallery();
+function finishSave(qr, id, qty, power, time, photoName, gps) {
+  const row = { qr, id, qty, power, gps, time, photo: photoName };
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+  scans.push(row);
+  localStorage.setItem("scans_" + currentProject.name, JSON.stringify(scans));
+  addRow(row, scans.length - 1);
+  updateSummary();
+  renderLampPlan();
+  updateProgress();
+  renderPhotoGallery();
 
-      document.getElementById("qrResult").value = "";
-      document.getElementById("idInput").value = "";
-      document.getElementById("qtyInput").value = "";
-      document.getElementById("powerInput").value = "";
-      document.getElementById("photoInput").value = "";
-    }
+  // wyczyść formularz
+  document.getElementById("qrResult").value = "";
+  document.getElementById("idInput").value = "";
+  document.getElementById("qtyInput").value = "";
+  document.getElementById("powerInput").value = "";
+  document.getElementById("photoInput").value = "";
+}
+
 
     function addRow(r, i) {
       const t = document.querySelector("#dataTable tbody");
