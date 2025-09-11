@@ -350,9 +350,6 @@ function saveEntry() {
   }
 }
 
-
-
-
 function finishSave(qr, id, qty, power, time, photoName, gps) {
   const row = { qr, id, qty, power, gps, time, photo: photoName };
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
@@ -419,30 +416,40 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
       document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
-   function exportCSV() {
+function exportCSV() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
 
   // Nagłówki
   let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
 
   scans.forEach(r => {
+    // GPS jako pełne współrzędne w jednej kolumnie
+    let gps = r.gps || "";
+
     // rozdzielamy datę i godzinę
     let datePart = "";
     let timePart = "";
     if (r.time) {
-      let parts = r.time.split(" ");
-      if (parts.length >= 2) {
-        datePart = parts[0];
-        timePart = parts[1];
+      let d = new Date(r.time);
+      if (!isNaN(d)) {
+        datePart = d.toLocaleDateString("pl-PL");   // np. 10.09.2025
+        timePart = d.toLocaleTimeString("pl-PL");   // np. 17:38:12
       } else {
-        datePart = r.time;
+        // fallback gdyby czas nie był Date
+        let parts = r.time.split(" ");
+        if (parts.length >= 2) {
+          datePart = parts[0];
+          timePart = parts[1];
+        } else {
+          datePart = r.time;
+        }
       }
     }
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${datePart},${timePart},${r.photo || ""}\n`;
+    csv += `${r.qr},${r.id},${r.qty},${r.power},${gps},${datePart},${timePart},${r.photo || ""}\n`;
   });
 
-  const blob = new Blob([csv], { type: "text/csv" });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   saveAs(blob, "raport.csv");
 }
 
@@ -451,23 +458,30 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
   let zip = new JSZip();
 
-  // Nagłówki
   let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
 
   scans.forEach(r => {
+    let gps = r.gps || "";
     let datePart = "";
     let timePart = "";
+
     if (r.time) {
-      let parts = r.time.split(" ");
-      if (parts.length >= 2) {
-        datePart = parts[0];
-        timePart = parts[1];
+      let d = new Date(r.time);
+      if (!isNaN(d)) {
+        datePart = d.toLocaleDateString("pl-PL");
+        timePart = d.toLocaleTimeString("pl-PL");
       } else {
-        datePart = r.time;
+        let parts = r.time.split(" ");
+        if (parts.length >= 2) {
+          datePart = parts[0];
+          timePart = parts[1];
+        } else {
+          datePart = r.time;
+        }
       }
     }
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${datePart},${timePart},${r.photo || ""}\n`;
+    csv += `${r.qr},${r.id},${r.qty},${r.power},${gps},${datePart},${timePart},${r.photo || ""}\n`;
 
     if (photos[r.id]) {
       const base64 = photos[r.id].split(",")[1];
