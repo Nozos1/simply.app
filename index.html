@@ -419,31 +419,67 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
       document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
-    function exportCSV() {
-      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\n";
-      scans.forEach(r => {
-        csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
-      saveAs(blob, "raport.csv");
+   function exportCSV() {
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+
+  // Nagłówki
+  let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
+
+  scans.forEach(r => {
+    // rozdzielamy datę i godzinę
+    let datePart = "";
+    let timePart = "";
+    if (r.time) {
+      let parts = r.time.split(" ");
+      if (parts.length >= 2) {
+        datePart = parts[0];
+        timePart = parts[1];
+      } else {
+        datePart = r.time;
+      }
     }
 
-    async function exportZIP() {
-      let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
-      let zip = new JSZip();
-      let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Czas,Zdjęcie\n";
-      scans.forEach(r => {
-        csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${r.time},${r.photo || ""}\n`;
-        if (photos[r.id]) {
-          const base64 = photos[r.id].split(",")[1];
-          zip.file("images/" + (r.photo || r.id + ".jpg"), base64, { base64: true });
-        }
-      });
-      zip.file("raport.csv", csv);
-      const blob = await zip.generateAsync({ type: "blob" });
-      saveAs(blob, "raport.zip");
+    csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${datePart},${timePart},${r.photo || ""}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  saveAs(blob, "raport.csv");
+}
+
+
+  async function exportZIP() {
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+  let zip = new JSZip();
+
+  // Nagłówki
+  let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
+
+  scans.forEach(r => {
+    let datePart = "";
+    let timePart = "";
+    if (r.time) {
+      let parts = r.time.split(" ");
+      if (parts.length >= 2) {
+        datePart = parts[0];
+        timePart = parts[1];
+      } else {
+        datePart = r.time;
+      }
     }
+
+    csv += `${r.qr},${r.id},${r.qty},${r.power},${r.gps},${datePart},${timePart},${r.photo || ""}\n`;
+
+    if (photos[r.id]) {
+      const base64 = photos[r.id].split(",")[1];
+      zip.file("images/" + (r.photo || r.id + ".jpg"), base64, { base64: true });
+    }
+  });
+
+  zip.file("raport.csv", csv);
+  const blob = await zip.generateAsync({ type: "blob" });
+  saveAs(blob, "raport.zip");
+}
+
 
     // ===== ARCHIWUM =====
     function endDay() {
