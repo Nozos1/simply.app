@@ -427,26 +427,29 @@ function exportCSV() {
     let gps = r.gps || "";
 
     // rozdzielamy datę i godzinę
-    let datePart = "";
-    let timePart = "";
-    if (r.time) {
-      let d = new Date(r.time);
-      if (!isNaN(d)) {
-        datePart = d.toLocaleDateString("pl-PL");   // np. 10.09.2025
-        timePart = d.toLocaleTimeString("pl-PL");   // np. 17:38:12
-      } else {
-        // fallback gdyby czas nie był Date
-        let parts = r.time.split(" ");
-        if (parts.length >= 2) {
-          datePart = parts[0];
-          timePart = parts[1];
-        } else {
-          datePart = r.time;
-        }
-      }
-    }
+let datePart = "";
+let timePart = "";
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
+if (r.time) {
+  // Spróbuj zamienić na Date
+  let d = new Date(r.time);
+  if (!isNaN(d)) {
+    datePart = d.toLocaleDateString("pl-PL");  // np. 12.09.2025
+    timePart = d.toLocaleTimeString("pl-PL");  // np. 05:49:14
+  } else {
+    // Fallback: rozbij string ręcznie
+    let parts = r.time.split(/[\s,]+/); // rozdziel po spacji lub przecinku
+    if (parts.length >= 2) {
+      datePart = parts[0]; // pierwsza część = data
+      timePart = parts[1]; // druga część = godzina
+    } else {
+      datePart = r.time;
+    }
+  }
+}
+
+csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
+
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -462,26 +465,29 @@ function exportCSV() {
 
   scans.forEach(r => {
     let gps = r.gps || "";
-    let datePart = "";
-    let timePart = "";
+let datePart = "";
+let timePart = "";
 
-    if (r.time) {
-      let d = new Date(r.time);
-      if (!isNaN(d)) {
-        datePart = d.toLocaleDateString("pl-PL");
-        timePart = d.toLocaleTimeString("pl-PL");
-      } else {
-        let parts = r.time.split(" ");
-        if (parts.length >= 2) {
-          datePart = parts[0];
-          timePart = parts[1];
-        } else {
-          datePart = r.time;
-        }
-      }
+if (r.time) {
+  // Spróbuj zamienić na Date
+  let d = new Date(r.time);
+  if (!isNaN(d)) {
+    datePart = d.toLocaleDateString("pl-PL");  // np. 12.09.2025
+    timePart = d.toLocaleTimeString("pl-PL");  // np. 05:49:14
+  } else {
+    // Fallback: rozbij string ręcznie
+    let parts = r.time.split(/[\s,]+/); // rozdziel po spacji lub przecinku
+    if (parts.length >= 2) {
+      datePart = parts[0]; // pierwsza część = data
+      timePart = parts[1]; // druga część = godzina
+    } else {
+      datePart = r.time;
     }
+  }
+}
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
+csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
+
 
     if (photos[r.id]) {
       const base64 = photos[r.id].split(",")[1];
