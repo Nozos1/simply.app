@@ -446,7 +446,7 @@ function exportCSV() {
       }
     }
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},${gps},${datePart},${timePart},${r.photo || ""}\n`;
+    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -481,7 +481,7 @@ function exportCSV() {
       }
     }
 
-    csv += `${r.qr},${r.id},${r.qty},${r.power},${gps},${datePart},${timePart},${r.photo || ""}\n`;
+    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
 
     if (photos[r.id]) {
       const base64 = photos[r.id].split(",")[1];
