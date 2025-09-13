@@ -423,41 +423,37 @@ function exportCSV() {
   let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
 
   scans.forEach(r => {
-    // GPS jako pełne współrzędne w jednej kolumnie
+    // GPS w jednej kolumnie
     let gps = r.gps || "";
 
-    // rozdzielamy datę i godzinę
-let datePart = "";
-let timePart = "";
-
-if (r.time) {
-  // Spróbuj zamienić na Date
-  let d = new Date(r.time);
-  if (!isNaN(d)) {
-    datePart = d.toLocaleDateString("pl-PL");  // np. 12.09.2025
-    timePart = d.toLocaleTimeString("pl-PL");  // np. 05:49:14
-  } else {
-    // Fallback: rozbij string ręcznie
-    let parts = r.time.split(/[\s,]+/); // rozdziel po spacji lub przecinku
-    if (parts.length >= 2) {
-      datePart = parts[0]; // pierwsza część = data
-      timePart = parts[1]; // druga część = godzina
-    } else {
-      datePart = r.time;
+    // Rozdzielamy datę i godzinę
+    let datePart = "";
+    let timePart = "";
+    if (r.time) {
+      let d = new Date(r.time);
+      if (!isNaN(d)) {
+        datePart = d.toLocaleDateString("pl-PL");   // np. 12.09.2025
+        timePart = d.toLocaleTimeString("pl-PL");   // np. 05:49:14
+      } else {
+        let parts = r.time.split(/[\s,]+/);
+        if (parts.length >= 2) {
+          datePart = parts[0];
+          timePart = parts[1];
+        } else {
+          datePart = r.time;
+        }
+      }
     }
-  }
-}
 
-csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
-
+    // Zapis w kolejności zgodnej z arkuszem
+    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   saveAs(blob, "raport.csv");
 }
 
-
-  async function exportZIP() {
+async function exportZIP() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
   let zip = new JSZip();
 
@@ -465,29 +461,26 @@ csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r
 
   scans.forEach(r => {
     let gps = r.gps || "";
-let datePart = "";
-let timePart = "";
+    let datePart = "";
+    let timePart = "";
 
-if (r.time) {
-  // Spróbuj zamienić na Date
-  let d = new Date(r.time);
-  if (!isNaN(d)) {
-    datePart = d.toLocaleDateString("pl-PL");  // np. 12.09.2025
-    timePart = d.toLocaleTimeString("pl-PL");  // np. 05:49:14
-  } else {
-    // Fallback: rozbij string ręcznie
-    let parts = r.time.split(/[\s,]+/); // rozdziel po spacji lub przecinku
-    if (parts.length >= 2) {
-      datePart = parts[0]; // pierwsza część = data
-      timePart = parts[1]; // druga część = godzina
-    } else {
-      datePart = r.time;
+    if (r.time) {
+      let d = new Date(r.time);
+      if (!isNaN(d)) {
+        datePart = d.toLocaleDateString("pl-PL");
+        timePart = d.toLocaleTimeString("pl-PL");
+      } else {
+        let parts = r.time.split(/[\s,]+/);
+        if (parts.length >= 2) {
+          datePart = parts[0];
+          timePart = parts[1];
+        } else {
+          datePart = r.time;
+        }
+      }
     }
-  }
-}
 
-csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
-
+    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
 
     if (photos[r.id]) {
       const base64 = photos[r.id].split(",")[1];
@@ -499,7 +492,6 @@ csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r
   const blob = await zip.generateAsync({ type: "blob" });
   saveAs(blob, "raport.zip");
 }
-
 
     // ===== ARCHIWUM =====
     function endDay() {
