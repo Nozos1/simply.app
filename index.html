@@ -422,7 +422,7 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
 function exportXLSX() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
 
-  // przygotowanie danych do arkusza
+  // przygotowanie danych
   let rows = [["Kod QR", "ID", "Ilość", "Moc (W)", "GPS", "Data", "Czas", "Zdjęcie"]];
   let sum = 0;
 
@@ -447,7 +447,7 @@ function exportXLSX() {
   // tworzymy arkusz
   let ws = XLSX.utils.aoa_to_sheet(rows);
 
-  // ustawienia szerokości kolumn
+  // szerokości kolumn
   ws["!cols"] = [
     { wch: 20 }, { wch: 10 }, { wch: 8 }, { wch: 10 },
     { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 25 }
@@ -465,11 +465,21 @@ function exportXLSX() {
     }
   }
 
-  // konwersja do workbooka
+  // podświetlenie wiersza SUMA
+  let lastRow = rows.length - 1;
+  for (let C = 0; C <= 7; C++) {
+    let cell = ws[XLSX.utils.encode_cell({ r:lastRow, c:C })];
+    if (cell) {
+      cell.s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "DDDDDD" } } // jasnoszare tło
+      };
+    }
+  }
+
+  // workbook i zapis
   let wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Raport");
-
-  // zapis
   XLSX.writeFile(wb, "raport.xlsx");
 }
 
