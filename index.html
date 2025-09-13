@@ -422,71 +422,56 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
 function exportXLSX() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
 
-  // Dane w układzie jak we wzorze
-  let data = [
-    ["Kod QR", "ID", "Ilość", "Moc (W)", "GPS", "Data", "Czas", "Zdjęcie"]
-  ];
-
-  let totalQty = 0;
+  // przygotowanie danych do arkusza
+  let rows = [["Kod QR", "ID", "Ilość", "Moc (W)", "GPS", "Data", "Czas", "Zdjęcie"]];
+  let sum = 0;
 
   scans.forEach(r => {
-    let gps = r.gps || "";
-
-    let datePart = "";
-    let timePart = "";
-    if (r.time) {
-      let d = new Date(r.time);
-      if (!isNaN(d)) {
-        datePart = d.toLocaleDateString("pl-PL");
-        timePart = d.toLocaleTimeString("pl-PL");
-      } else {
-        let parts = r.time.split(/[\s,]+/);
-        if (parts.length >= 2) {
-          datePart = parts[0];
-          timePart = parts[1];
-        } else {
-          datePart = r.time;
-        }
-      }
-    }
-
-    totalQty += r.qty;
-
-    data.push([
-      r.qr,
-      r.id,
-      r.qty,
-      r.power,
-      gps,
-      datePart,
-      timePart,
+    sum += r.qty;
+    let [date, time] = r.time.split(", ");
+    rows.push([
+      r.qr, 
+      r.id, 
+      r.qty, 
+      r.power, 
+      r.gps, 
+      date, 
+      time, 
       r.photo || ""
     ]);
   });
 
-  // Dodajemy SUMĘ pod kolumną Ilość
-  data.push(["", "", { f: `SUM(C2:C${scans.length + 1})` }, "", "", "", "", ""]);
+  // wiersz SUMA
+  rows.push(["", "", { v: sum, t: "n" }, "", "", "", "", ""]);
 
-  // Tworzymy arkusz
-  let ws = XLSX.utils.aoa_to_sheet(data);
+  // tworzymy arkusz
+  let ws = XLSX.utils.aoa_to_sheet(rows);
 
-  // Formatowanie nagłówków
-  const headerRange = XLSX.utils.decode_range(ws["!ref"]);
+  // ustawienia szerokości kolumn
+  ws["!cols"] = [
+    { wch: 20 }, { wch: 10 }, { wch: 8 }, { wch: 10 },
+    { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 25 }
+  ];
+
+  // pogrubienie + wyśrodkowanie nagłówków
+  let headerRange = XLSX.utils.decode_range(ws["!ref"]);
   for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
-    let cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
-    if (!cell.s) cell.s = {};
-    cell.s = {
-      font: { bold: true },
-      alignment: { horizontal: "center", vertical: "center" }
-    };
+    let cell = ws[XLSX.utils.encode_cell({ r:0, c:C })];
+    if (cell) {
+      cell.s = {
+        font: { bold: true },
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+    }
   }
 
-  // Tworzymy workbook i zapisujemy
+  // konwersja do workbooka
   let wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Raport");
+
+  // zapis
   XLSX.writeFile(wb, "raport.xlsx");
 }
-
 
 async function exportZIP() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
