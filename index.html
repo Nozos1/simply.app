@@ -54,6 +54,13 @@
     <button onclick="backToProjectSelection()">⬅️ Zmień inwestycję</button>
   </div>
 
+  <div id="searchSection" style="margin-top:2rem;">
+  <h3>🔍 Wyszukaj po ID</h3>
+  <input type="text" id="searchId" placeholder="Wpisz ID">
+  <button onclick="searchById()">Szukaj</button>
+  <div id="searchResults" style="margin-top:1rem;"></div>
+</div>
+  
   <!-- Panel montażu -->
   <div id="montazApp">
     <h2>Montaż – <span id="montazProjectName"></span></h2>
@@ -563,6 +570,48 @@ async function exportZIP() {
       document.getElementById("totalSum").textContent = "Łączna suma ilości: " + total;
     }
 
+  function searchById() {
+  const searchId = document.getElementById("searchId").value.trim();
+  const resultsDiv = document.getElementById("searchResults");
+
+  if (!searchId) {
+    resultsDiv.innerHTML = "<p>⚠️ Wpisz ID do wyszukania.</p>";
+    return;
+  }
+
+  let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
+  let archive = JSON.parse(localStorage.getItem("archive_" + currentProject.name) || "{}");
+  let allScans = [...scans];
+  Object.values(archive).forEach(day => { allScans = allScans.concat(day) });
+
+  const matches = allScans.filter(r => r.id == searchId);
+
+  if (matches.length === 0) {
+    resultsDiv.innerHTML = `<p>❌ Brak wyników dla ID: <b>${searchId}</b></p>`;
+    return;
+  }
+
+  let html = "<table style='width:100%; border-collapse: collapse; margin-top:1rem;'>";
+  html += "<tr><th>Kod QR</th><th>ID</th><th>Ilość</th><th>Moc</th><th>GPS</th><th>Data</th><th>Czas</th><th>Zdjęcie</th></tr>";
+
+  matches.forEach(r => {
+    let imgHTML = photos[r.id] ? `<img src="${photos[r.id]}" class="thumb">` : "";
+    html += `<tr>
+      <td>${r.qr}</td>
+      <td>${r.id}</td>
+      <td>${r.qty}</td>
+      <td>${r.power}</td>
+      <td>${r.gps}</td>
+      <td>${r.time.split(",")[0]}</td>
+      <td>${r.time.split(",")[1] || ""}</td>
+      <td>${imgHTML}</td>
+    </tr>`;
+  });
+
+  html += "</table>";
+  resultsDiv.innerHTML = html;
+}
+    
     // ===== RAPORT MONTAŻU =====
     function showRaport() {
       if (!currentProject) return;
