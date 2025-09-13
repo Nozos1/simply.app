@@ -17,6 +17,9 @@
     #dayList li:hover, #finishedDays li:hover { background: #222; }
     #projectSelection, #app, #montazApp { display: none; }
   </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 </head>
 <body>
   <h1>SimplyApp</h1>
@@ -62,7 +65,7 @@
     <input type="number" id="powerInput" placeholder="Moc (W)"><br>
     <input type="file" id="photoInput" accept="image/*" capture="camera"><br>
     <button id="saveBtn">Zapisz</button>
-    <button onclick="exportCSV()">Eksportuj CSV</button>
+    <button onclick="exportXLSX()">📑 Eksportuj XLSX</button>
     <button onclick="exportZIP()">📦 Eksportuj ZIP</button>
     <button onclick="clearData()">🗑️ Wyczyść dane</button>
     <button onclick="endDay()">📅 Zakończ dzień</button>
@@ -416,24 +419,26 @@ function finishSave(qr, id, qty, power, time, photoName, gps) {
       document.getElementById("summary").textContent = "Suma ilości: " + sum;
     }
 
-function exportCSV() {
+function exportXLSX() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
 
-  // Nagłówki
-  let csv = "Kod QR,ID,Ilość,Moc (W),GPS,Data,Czas,Zdjęcie\n";
+  // Dane w układzie jak we wzorze
+  let data = [
+    ["Kod QR", "ID", "Ilość", "Moc (W)", "GPS", "Data", "Czas", "Zdjęcie"]
+  ];
+
+  let totalQty = 0;
 
   scans.forEach(r => {
-    // GPS w jednej kolumnie
     let gps = r.gps || "";
 
-    // Rozdzielamy datę i godzinę
     let datePart = "";
     let timePart = "";
     if (r.time) {
       let d = new Date(r.time);
       if (!isNaN(d)) {
-        datePart = d.toLocaleDateString("pl-PL");   // np. 12.09.2025
-        timePart = d.toLocaleTimeString("pl-PL");   // np. 05:49:14
+        datePart = d.toLocaleDateString("pl-PL");
+        timePart = d.toLocaleTimeString("pl-PL");
       } else {
         let parts = r.time.split(/[\s,]+/);
         if (parts.length >= 2) {
@@ -445,13 +450,43 @@ function exportCSV() {
       }
     }
 
-    // Zapis w kolejności zgodnej z arkuszem
-    csv += `${r.qr},${r.id},${r.qty},${r.power},"${gps}",${datePart},${timePart},${r.photo || ""}\n`;
+    totalQty += r.qty;
+
+    data.push([
+      r.qr,
+      r.id,
+      r.qty,
+      r.power,
+      gps,
+      datePart,
+      timePart,
+      r.photo || ""
+    ]);
   });
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  saveAs(blob, "raport.csv");
+  // Dodajemy SUMĘ pod kolumną Ilość
+  data.push(["", "", { f: `SUM(C2:C${scans.length + 1})` }, "", "", "", "", ""]);
+
+  // Tworzymy arkusz
+  let ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Formatowanie nagłówków
+  const headerRange = XLSX.utils.decode_range(ws["!ref"]);
+  for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+    let cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+    if (!cell.s) cell.s = {};
+    cell.s = {
+      font: { bold: true },
+      alignment: { horizontal: "center", vertical: "center" }
+    };
+  }
+
+  // Tworzymy workbook i zapisujemy
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Raport");
+  XLSX.writeFile(wb, "raport.xlsx");
 }
+
 
 async function exportZIP() {
   let scans = JSON.parse(localStorage.getItem("scans_" + currentProject.name) || "[]");
