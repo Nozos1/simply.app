@@ -68,7 +68,7 @@
     <h2>Montaż – <span id="montazProjectName"></span></h2>
     <div id="preview" style="width:300px;height:200px;margin:0 auto;"></div><br>
     <button onclick="startScanner()">Skanuj kod QR</button><br>
-    <input type="text" id="qrResult" placeholder="Kod QR" readonly><br>
+    <input type="text" id="qrResult" placeholder="Kod QR (skan lub ręcznie)"><br>
     <input type="text" id="idInput" placeholder="Wpisz ID"><br>
     <input type="number" id="qtyInput" placeholder="Ilość"><br>
     <input type="number" id="powerInput" placeholder="Moc (W)"><br>
@@ -310,11 +310,12 @@
 
     // ===== ZAPIS WEJŚCIA + ZDJĘCIA =====
 function saveEntry() {
-  const qr = document.getElementById("qrResult").value;
+  const qr = document.getElementById("qrResult").value.trim();
   const id = document.getElementById("idInput").value.trim();
   const qty = parseInt(document.getElementById("qtyInput").value) || 0;
   const power = parseInt(document.getElementById("powerInput").value) || 0;
   if (!qr || !id) return alert("Skan QR i ID wymagane");
+  if (!qr) return alert("Wpisz lub zeskanuj kod QR.");
 
   const file = document.getElementById("photoInput").files[0];
   const time = new Date().toLocaleString();
