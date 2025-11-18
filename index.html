@@ -41,12 +41,10 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     // ===== KONFIGURACJA SUPABASE =====
-    
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = 'https://alakcrjzfuftugzrrwcr.supabase.co'
-const supabaseKey = process.env.SUPABASE_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)
+    const { createClient } = supabase;
+    const supabaseUrl = 'https://alakcrjzfuftugzrrwcr.supabase.co';
+    const supabaseKey = window.SUPABASE_KEY || "";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     let data = [];
 
@@ -230,7 +228,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
         scanner.clear().catch(() => {});
       }
 
-      const config = { fps: 10, qrbox: 250, facingMode: { exact: "environment" } };
+      const config = { fps: 10, qrbox: 250 };
 
       scanner.start({ facingMode: "environment" }, config, qrCodeMessage => {
         document.getElementById("qrResult").value = qrCodeMessage;
